@@ -9,6 +9,7 @@ description = "AURA personal AI-powered desktop assistant"
 requires-python = ">=3.11"
 dependencies = [
     "PySide6>=6.7,<7",
+    "google-genai>=1.0,<3",
 ]
 
 [project.optional-dependencies]

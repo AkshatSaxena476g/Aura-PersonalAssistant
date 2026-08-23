@@ -1,36 +1,40 @@
 ## Current Phase
 
-Phase 1: Basic Desktop Application — complete.
+Phase 2: AI Core — complete.
 
 ## Completed
 
-- Phase 0 project foundation and modular Python structure remain intact.
-- PySide6 was added as the runtime dependency through `pyproject.toml` using the existing project configuration strategy: `PySide6>=6.7,<7`.
-- The `app/ui/` boundary now contains `MainWindow`, a minimal branded AURA main window, and `DesktopApplication`, the Qt composition wrapper.
-- The existing `app/core/application.py` lifecycle now accepts an optional UI runner. The core remains independent of PySide6 and delegates to the UI through a callable supplied by the composition root.
-- The existing `main.py` entry point now loads settings, composes the desktop application, and starts the core lifecycle with the Qt UI runner.
-- The UI intentionally contains only AURA branding and a readiness message. Chat, AI integration, tools, file management, system control, voice, wake-word behavior, media features, memory, and advanced automation remain out of scope.
-- UI and lifecycle tests were added without disturbing the provider-neutral AI layer or Phase 0 tests.
-- README setup and layout documentation were updated for the Phase 1 desktop shell.
+- Phase 0 foundation and Phase 1 PySide6 desktop lifecycle remain intact.
+- The official `google-genai` SDK was added through `pyproject.toml` as `google-genai>=1.0,<3`.
+- `app/config/settings.py` now loads `AURA_AI_PROVIDER`, `AURA_AI_MODEL`, and `GEMINI_API_KEY` from process environment variables or the local `.env` file. Process environment values take precedence, and credentials are excluded from representations and logs.
+- `app/ai/gemini_provider.py` implements the existing provider-neutral `AIProvider` contract using the official `google-genai` client and `models.generate_content` API.
+- `app/ai/factory.py` registers Gemini through the existing `ProviderRegistry` and safely handles unsupported providers and provider initialization failures.
+- `app/core/conversation.py` provides provider-agnostic text conversation history, structured turn results, empty-message validation, and safe expected/unexpected error handling.
+- `app/core/application.py` now composes the conversation service without importing Gemini or PySide6, exposes safe startup status, and routes UI messages through the conversation boundary.
+- `app/ui/main_window.py` now provides a simple conversation display, text input, send button, user/AURA message differentiation, and safe UI error presentation. Gemini logic remains outside the widgets.
+- `app/ui/desktop_application.py` and `main.py` preserve the existing desktop startup path while supplying the configured core message handler to the UI.
+- Mocked tests cover Gemini request translation, missing API keys, SDK failures, provider selection, conversation history, empty messages, unexpected errors, application routing, and UI interaction.
+- README and `.env.example` were updated to document the current Gemini-backed text conversation scope.
 
 ## Currently Working On
 
-Phase 1 is complete. The AURA desktop application now has a minimal, settings-aware PySide6 shell that can be extended in later phases without restructuring the core or UI boundaries.
+Phase 2 is complete. AURA now supports text-only conversation through the configured Gemini provider while retaining replaceable provider boundaries and the existing PySide6 desktop shell.
 
 ## Next Task
 
-Begin Phase 2: AI Core. Add conversation handling and a concrete provider integration through the existing provider abstraction, while keeping provider-specific code isolated from the application core and UI.
+Begin Phase 3: Tool System. Design validated tool definitions, a centralized registry, safe input validation, execution flow, and tool result handling. Do not add computer control or unrestricted shell execution without the confirmation and validation mechanisms required by the architecture.
 
 ## Validation
 
-- `py -3.12 -m pytest -q` with `QT_QPA_PLATFORM=offscreen`: 10 tests passed.
-- `py main.py` on Windows: launched successfully; the validation process reported the window title `AURA | Personal Desktop Assistant - AURA` and was then closed cleanly.
-- The Phase 0 headless lifecycle test continues to pass.
+- `QT_QPA_PLATFORM=offscreen py -3.12 -m pytest -q`: 25 tests passed.
+- Package wheel build: completed successfully after adding `google-genai`.
+- `py main.py` on Windows with the local `.env`: launched successfully; the validation process reported the window title `AURA | Personal Desktop Assistant - AURA` and was then closed cleanly.
+- No real Gemini request was made during automated or launch validation, so the API key was not exposed in logs or output.
 
 ## Known Issues
 
-No known implementation issues. The application currently presents a static UI shell by design; interactive conversation and assistant capabilities belong to later phases.
+No known implementation issues. Gemini requests are synchronous in the initial Phase 2 UI and may temporarily block the window during a network request; asynchronous request handling can be considered in a later UI refinement. Tool execution, computer control, file management, shell execution, web/media control, voice, text-to-speech, wake-word behavior, memory, and advanced automation remain intentionally unimplemented.
 
 ## Last Updated
 
-2026-08-23 — Phase 1 PySide6 desktop foundation implemented and verified.
+2026-08-23 — Phase 2 Gemini AI core and text conversation flow implemented and verified.

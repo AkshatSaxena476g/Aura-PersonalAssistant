@@ -11,6 +11,18 @@ from enum import StrEnum
 from typing import Protocol, Sequence
 
 
+class ProviderError(Exception):
+    """Base class for expected provider failures safe to show to users."""
+
+
+class ProviderConfigurationError(ProviderError):
+    """Raised when a provider is not configured for use."""
+
+
+class ProviderRequestError(ProviderError):
+    """Raised when a provider request or response cannot be completed."""
+
+
 class MessageRole(StrEnum):
     """Roles supported by the provider-neutral conversation format."""
 

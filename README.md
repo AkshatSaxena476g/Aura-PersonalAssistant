@@ -22,16 +22,16 @@ The current implementation target is recorded in `docs/ACTIVE_TASK.md`.
 
 ## Initial technology direction
 
-AURA is a Windows-first Python desktop application. The planned technology direction includes PySide6 for the desktop UI, a swappable AI provider layer, SQLite for persistence, replaceable speech and wake-word providers, Playwright for supported web interaction, pytest for testing, Python logging, and PyInstaller for later packaging.
+AURA is a Windows-first Python desktop application. The technology direction includes PySide6 for the desktop UI, the official `google-genai` SDK behind a swappable AI provider layer, SQLite for persistence, replaceable speech and wake-word providers, Playwright for supported web interaction, pytest for testing, Python logging, and PyInstaller for later packaging. The current Phase 2 implementation supports text conversation through Gemini only.
 
 ## Repository layout
 
 ```text
 AURA/
 ├── app/
-│   ├── ai/       # Provider-neutral AI contracts and provider registry
+│   ├── ai/       # Provider contracts, registry, factory, and Gemini adapter
 │   ├── config/   # Environment-driven application settings
-│   ├── core/     # Provider-agnostic application lifecycle and orchestration
+│   ├── core/     # Provider-agnostic lifecycle and conversation orchestration
 │   ├── data/     # Future persistence and data-access boundary
 │   ├── tools/    # Future validated, centrally registered action tools
 │   ├── ui/       # Desktop UI boundary and initial Qt shell
@@ -44,7 +44,7 @@ AURA/
 └── .env.example
 ```
 
-The Phase 1 foundation contains a minimal desktop UI shell but deliberately contains no concrete AI provider, chat functionality, voice control, unrestricted command execution, file management, web/media control, wake-word behavior, or advanced automation.
+The Phase 2 foundation supports text conversation through the configured Gemini provider, but deliberately contains no tool execution, computer control, file management, shell execution, web/media control, voice, text-to-speech, wake-word behavior, persistent memory, or advanced automation.
 
 ## Local setup
 
@@ -57,7 +57,7 @@ py -m pip install --upgrade pip
 py -m pip install -e ".[dev]"
 ```
 
-Copy `.env.example` to `.env` when environment-based settings are needed. Application settings use the standard library; provider credentials remain reserved for later provider implementations.
+Copy `.env.example` to `.env` and set `GEMINI_API_KEY`, `AURA_AI_PROVIDER=gemini`, and `AURA_AI_MODEL` for Gemini conversation. Application settings use the standard library, and API credentials are never printed or logged.
 
 Run the AURA desktop application with:
 

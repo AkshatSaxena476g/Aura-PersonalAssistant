@@ -1,24 +1,41 @@
-"""Command-line entry point for the AURA desktop application foundation."""
+"""Executable composition root for the AURA desktop application."""
 
 from __future__ import annotations
 
 import logging
 
+from app.ai import create_configured_provider
 from app.config import Settings
 from app.core import Application
 from app.ui import DesktopApplication
 
 
 def main() -> int:
-    """Load settings, initialize AURA, and return an exit status."""
+    """Load settings, initialize AURA, and run the desktop application."""
 
     settings = Settings.from_environment()
     logging.basicConfig(
         level=settings.log_level,
         format="%(asctime)s | %(levelname)s | %(name)s | %(message)s",
     )
-    desktop_application = DesktopApplication(settings=settings)
-    return Application(settings=settings).run(ui_runner=desktop_application.run)
+
+    provider, provider_error = create_configured_provider(settings)
+    application = Application(
+        settings=settings,
+        provider=provider,
+        provider_error=provider_error,
+    )
+    desktop_application = DesktopApplication(
+        settings=settings,
+        message_handler=application.send_message,
+        startup_message=application.status_message,
+    )
+
+    try:
+        return application.run(ui_runner=desktop_application.run)
+    finally:
+        desktop_application.close()
+        application.close()
 
 
 if __name__ == "__main__":

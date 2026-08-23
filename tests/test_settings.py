@@ -28,9 +28,24 @@ def test_settings_load_environment_values() -> None:
 
     assert settings.application_name == "AURA Test"
     assert settings.ai_provider == "local"
+    assert settings.ai_model == "gemini-3.7-flash"
     assert settings.log_level == "DEBUG"
     assert settings.debug is True
     assert settings.data_directory == Path("~/aura-data").expanduser()
+
+
+def test_settings_load_dotenv_without_exposing_values(tmp_path) -> None:
+    dotenv = tmp_path / ".env"
+    dotenv.write_text(
+        "AURA_AI_PROVIDER=gemini\nAURA_AI_MODEL=gemini-test\nGEMINI_API_KEY=secret\n",
+        encoding="utf-8",
+    )
+
+    settings = Settings.from_environment(dotenv_path=dotenv)
+
+    assert settings.ai_provider == "gemini"
+    assert settings.ai_model == "gemini-test"
+    assert settings.gemini_api_key == "secret"
 
 
 def test_settings_reject_invalid_boolean() -> None:
