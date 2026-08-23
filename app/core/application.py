@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import logging
+from collections.abc import Callable
 
 from app.ai.provider import AIProvider
 from app.config.settings import Settings
@@ -21,16 +22,20 @@ class Application:
         self.settings = settings
         self.provider = provider
 
-    def run(self) -> int:
-        """Start the foundation lifecycle and return a process exit code.
+    def run(self, ui_runner: Callable[[], int] | None = None) -> int:
+        """Start AURA and optionally hand off to the desktop UI event loop.
 
-        UI, voice, tool execution, persistence, and concrete AI integrations
-        are intentionally not started until their planned phases.
+        The core owns application startup and configuration, while the UI is
+        supplied as a callable by the composition root. This keeps the core
+        independent from PySide6 and preserves a headless path for tests and
+        future non-desktop entry points.
         """
 
         logger.info(
-            "%s foundation initialized (AI provider: %s)",
+            "%s initialized (AI provider: %s)",
             self.settings.application_name,
             self.settings.ai_provider,
         )
-        return 0
+        if ui_runner is None:
+            return 0
+        return ui_runner()

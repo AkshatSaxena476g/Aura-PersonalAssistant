@@ -6,6 +6,7 @@ import logging
 
 from app.config import Settings
 from app.core import Application
+from app.ui import DesktopApplication
 
 
 def main() -> int:
@@ -16,7 +17,8 @@ def main() -> int:
         level=settings.log_level,
         format="%(asctime)s | %(levelname)s | %(name)s | %(message)s",
     )
-    return Application(settings=settings).run()
+    desktop_application = DesktopApplication(settings=settings)
+    return Application(settings=settings).run(ui_runner=desktop_application.run)
 
 
 if __name__ == "__main__":

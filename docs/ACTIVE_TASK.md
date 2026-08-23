@@ -1,22 +1,22 @@
 ## Task
 
-Begin Phase 1: Basic Desktop Application.
+Begin Phase 2: AI Core.
 
 ## Objectives
 
-- Add the initial PySide6 desktop application lifecycle.
-- Create a minimal UI shell suitable for text interaction.
-- Keep UI concerns separate from the provider-agnostic assistant core.
-- Establish a settings-aware application startup path without integrating a concrete AI model yet.
+- Add conversation handling behind the existing provider-neutral AI abstraction.
+- Integrate a concrete AI provider without coupling the assistant core to vendor-specific code.
+- Define structured assistant responses suitable for future tool requests and UI presentation.
+- Preserve the settings-aware desktop lifecycle and minimal UI shell established in Phase 1.
 
 ## Current Progress
 
-Phase 0 is complete. The repository now contains the documented modular Python package layout, environment-driven settings, a provider-neutral AI contract and registry, a basic application entry point, packaging metadata, setup documentation, and focused automated tests.
+Phase 1 is complete. The repository now includes a PySide6 dependency, a minimal branded `MainWindow`, a `DesktopApplication` Qt wrapper in `app/ui/`, and an optional UI runner integrated into the existing provider-agnostic `Application` lifecycle. Ten automated tests pass, and the Windows entry point launches the AURA desktop window successfully.
 
 ## Next Action
 
-Implement the smallest usable PySide6 application shell in `app/ui/` and compose it from the existing `Application` lifecycle without adding voice control, tool execution, file management, web/media control, wake-word behavior, or advanced automation.
+Design and implement the Phase 2 AI core using the existing contracts in `app/ai/` and `app/core/`. Keep concrete provider adapters isolated and do not add tool execution, voice features, file management, system control, wake-word behavior, media features, memory, or advanced automation yet.
 
 ## Completion Criteria
 
-The next task is complete when AURA launches a minimal desktop window, the UI remains isolated from provider implementations, and the lifecycle is covered by automated tests without changing the established architecture.
+The next task is complete when AURA can process a conversation through a selected provider using structured, testable responses, while the core remains provider-agnostic and the Phase 1 desktop startup path remains functional.

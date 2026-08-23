@@ -34,7 +34,7 @@ AURA/
 │   ├── core/     # Provider-agnostic application lifecycle and orchestration
 │   ├── data/     # Future persistence and data-access boundary
 │   ├── tools/    # Future validated, centrally registered action tools
-│   ├── ui/       # Future desktop UI boundary
+│   ├── ui/       # Desktop UI boundary and initial Qt shell
 │   └── voice/    # Future replaceable voice boundary
 ├── docs/         # Project guidance and architecture records
 ├── tests/        # Automated tests
@@ -44,7 +44,7 @@ AURA/
 └── .env.example
 ```
 
-The initial foundation deliberately contains no concrete AI provider, desktop UI, voice control, unrestricted command execution, file management, web/media control, wake-word behavior, or advanced automation.
+The Phase 1 foundation contains a minimal desktop UI shell but deliberately contains no concrete AI provider, chat functionality, voice control, unrestricted command execution, file management, web/media control, wake-word behavior, or advanced automation.
 
 ## Local setup
 
@@ -57,9 +57,9 @@ py -m pip install --upgrade pip
 py -m pip install -e ".[dev]"
 ```
 
-Copy `.env.example` to `.env` when environment-based settings are needed. The Phase 0 application uses standard-library configuration loading; provider credentials remain reserved for later provider implementations.
+Copy `.env.example` to `.env` when environment-based settings are needed. Application settings use the standard library; provider credentials remain reserved for later provider implementations.
 
-Run the foundation application with:
+Run the AURA desktop application with:
 
 ```powershell
 py main.py
@@ -70,3 +70,5 @@ Run the automated tests with:
 ```powershell
 py -m pytest
 ```
+
+For headless test environments, set `QT_QPA_PLATFORM=offscreen` before running pytest.
