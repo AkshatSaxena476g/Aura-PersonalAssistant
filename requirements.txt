@@ -1,0 +1,3 @@
+# The project configuration and dependency source of truth is pyproject.toml.
+# Install runtime and development dependencies with:
+#   py -m pip install -e ".[dev]"
