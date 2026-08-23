@@ -1,40 +1,40 @@
 ## Current Phase
 
-Phase 2: AI Core — complete.
+Phase 3: Tool System — complete.
 
 ## Completed
 
-- Phase 0 foundation and Phase 1 PySide6 desktop lifecycle remain intact.
-- The official `google-genai` SDK was added through `pyproject.toml` as `google-genai>=1.0,<3`.
-- `app/config/settings.py` now loads `AURA_AI_PROVIDER`, `AURA_AI_MODEL`, and `GEMINI_API_KEY` from process environment variables or the local `.env` file. Process environment values take precedence, and credentials are excluded from representations and logs.
-- `app/ai/gemini_provider.py` implements the existing provider-neutral `AIProvider` contract using the official `google-genai` client and `models.generate_content` API.
-- `app/ai/factory.py` registers Gemini through the existing `ProviderRegistry` and safely handles unsupported providers and provider initialization failures.
-- `app/core/conversation.py` provides provider-agnostic text conversation history, structured turn results, empty-message validation, and safe expected/unexpected error handling.
-- `app/core/application.py` now composes the conversation service without importing Gemini or PySide6, exposes safe startup status, and routes UI messages through the conversation boundary.
-- `app/ui/main_window.py` now provides a simple conversation display, text input, send button, user/AURA message differentiation, and safe UI error presentation. Gemini logic remains outside the widgets.
-- `app/ui/desktop_application.py` and `main.py` preserve the existing desktop startup path while supplying the configured core message handler to the UI.
-- Mocked tests cover Gemini request translation, missing API keys, SDK failures, provider selection, conversation history, empty messages, unexpected errors, application routing, and UI interaction.
-- README and `.env.example` were updated to document the current Gemini-backed text conversation scope.
+- Phases 0–2 remain intact, including the replaceable Gemini provider layer, provider-agnostic conversation service, and PySide6 desktop lifecycle.
+- `app/tools/contracts.py` now defines the provider-independent `Tool` contract, `ToolDefinition`, `ToolPermission`, `ToolValidationError`, and structured `ToolResult` types.
+- `app/tools/registry.py` provides centralized tool registration, duplicate prevention, normalized lookup, and deterministic discovery.
+- `app/core/tool_execution.py` provides the controlled execution boundary. It performs tool lookup, argument validation, permission checks, optional confirmation handling, safe execution, and structured error conversion.
+- `app/tools/demo.py` adds only safe, read-only demonstrations for current application status and local date/time.
+- `app/tools/defaults.py` composes the default registry with the two safe demonstration tools.
+- `app/core/application.py` exposes `execute_tool()` as a future integration seam without connecting Gemini directly to tools.
+- `main.py` composes the default safe tool registry and execution service during application startup.
+- Focused tests cover tool contracts, schema validation, registration and discovery, duplicate names, successful execution, invalid input, unknown tools, confirmation gating, restricted tools, execution errors, invalid results, safe demonstrations, and application integration.
+- README documentation was updated to reflect the Phase 3 tool system and its deliberately limited scope.
 
 ## Currently Working On
 
-Phase 2 is complete. AURA now supports text-only conversation through the configured Gemini provider while retaining replaceable provider boundaries and the existing PySide6 desktop shell.
+Phase 3 is complete. AURA has a provider-independent and safety-conscious tool architecture, but no computer-control capability has been enabled.
 
 ## Next Task
 
-Begin Phase 3: Tool System. Design validated tool definitions, a centralized registry, safe input validation, execution flow, and tool result handling. Do not add computer control or unrestricted shell execution without the confirmation and validation mechanisms required by the architecture.
+Begin Phase 4: Basic Computer Control. Add only explicitly approved, narrowly scoped computer actions on top of the Phase 3 tool boundary, with strict validation, confirmation for sensitive actions, and Windows-focused tests. Do not add unrestricted shell execution.
 
 ## Validation
 
-- `QT_QPA_PLATFORM=offscreen py -3.12 -m pytest -q`: 25 tests passed.
-- Package wheel build: completed successfully after adding `google-genai`.
-- `py main.py` on Windows with the local `.env`: launched successfully; the validation process reported the window title `AURA | Personal Desktop Assistant - AURA` and was then closed cleanly.
-- No real Gemini request was made during automated or launch validation, so the API key was not exposed in logs or output.
+- `QT_QPA_PLATFORM=offscreen py -3.12 -m pytest -q`: 38 tests passed.
+- Package wheel build: completed successfully after adding the tool modules.
+- `py main.py` on Windows: launched successfully with the local configuration; the validation process reported the window title `AURA | Personal Desktop Assistant - AURA` and was then closed cleanly.
+- No AI-to-tool direct connection was added, and no prohibited computer-control tool was implemented.
+- Temporary build and editable-install artifacts were removed after validation.
 
 ## Known Issues
 
-No known implementation issues. Gemini requests are synchronous in the initial Phase 2 UI and may temporarily block the window during a network request; asynchronous request handling can be considered in a later UI refinement. Tool execution, computer control, file management, shell execution, web/media control, voice, text-to-speech, wake-word behavior, memory, and advanced automation remain intentionally unimplemented.
+No known implementation issues. The tool execution service is intentionally not connected to Gemini function calling or the chat UI during this phase. The only registered default tools are safe, read-only demonstrations. Shell execution, application launching, file modification, system control, browser automation, voice, media control, memory, and autonomous actions remain intentionally unavailable.
 
 ## Last Updated
 
-2026-08-23 — Phase 2 Gemini AI core and text conversation flow implemented and verified.
+2026-08-23 — Phase 3 tool system implemented and verified.

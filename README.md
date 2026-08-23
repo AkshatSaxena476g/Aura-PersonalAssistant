@@ -31,9 +31,9 @@ AURA/
 ├── app/
 │   ├── ai/       # Provider contracts, registry, factory, and Gemini adapter
 │   ├── config/   # Environment-driven application settings
-│   ├── core/     # Provider-agnostic lifecycle and conversation orchestration
+│   ├── core/     # Provider-agnostic lifecycle, conversation, and tool execution
 │   ├── data/     # Future persistence and data-access boundary
-│   ├── tools/    # Future validated, centrally registered action tools
+│   ├── tools/    # Validated, centrally registered, permission-aware tools
 │   ├── ui/       # Desktop UI boundary and initial Qt shell
 │   └── voice/    # Future replaceable voice boundary
 ├── docs/         # Project guidance and architecture records
@@ -44,7 +44,7 @@ AURA/
 └── .env.example
 ```
 
-The Phase 2 foundation supports text conversation through the configured Gemini provider, but deliberately contains no tool execution, computer control, file management, shell execution, web/media control, voice, text-to-speech, wake-word behavior, persistent memory, or advanced automation.
+The Phase 3 foundation supports text conversation through the configured Gemini provider and includes only safe, read-only demonstration tools. It deliberately contains no computer control, file management, shell execution, web/media control, voice, text-to-speech, wake-word behavior, persistent memory, autonomous actions, or advanced automation.
 
 ## Local setup
 

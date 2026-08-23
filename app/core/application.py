@@ -1,14 +1,17 @@
-"""Provider-agnostic AURA application lifecycle and conversation boundary."""
+"""Provider-agnostic AURA application lifecycle and service boundaries."""
 
 from __future__ import annotations
 
 import logging
-from collections.abc import Callable
+from collections.abc import Callable, Mapping
+from typing import Any
 
 from app.ai.provider import AIProvider, ChatMessage, MessageRole
 from app.config.settings import Settings
+from app.tools.contracts import ToolResult
 
 from .conversation import ConversationResult, ConversationService
+from .tool_execution import ToolExecutionService
 
 logger = logging.getLogger(__name__)
 
@@ -21,10 +24,12 @@ class Application:
         settings: Settings,
         provider: AIProvider | None = None,
         provider_error: str | None = None,
+        tool_service: ToolExecutionService | None = None,
     ) -> None:
         self.settings = settings
         self.provider = provider
         self.provider_error = provider_error
+        self.tool_service = tool_service
         self.conversation = (
             ConversationService(
                 provider,
@@ -62,6 +67,22 @@ class Application:
                 or "No AI provider is configured for conversation.",
             )
         return self.conversation.send(text)
+
+    def execute_tool(
+        self,
+        name: str,
+        arguments: Mapping[str, Any] | None = None,
+        *,
+        confirmed: bool = False,
+    ) -> ToolResult:
+        """Execute a registered tool through the controlled tool boundary."""
+
+        if self.tool_service is None:
+            return ToolResult.failure(
+                "No tool execution service is configured.",
+                error_code="tools_unavailable",
+            )
+        return self.tool_service.execute(name, arguments, confirmed=confirmed)
 
     def run(self, ui_runner: Callable[[], int] | None = None) -> int:
         """Start AURA and optionally hand off to the desktop UI event loop."""

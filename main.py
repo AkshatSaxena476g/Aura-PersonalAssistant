@@ -6,7 +6,8 @@ import logging
 
 from app.ai import create_configured_provider
 from app.config import Settings
-from app.core import Application
+from app.core import Application, ToolExecutionService
+from app.tools import create_default_tool_registry
 from app.ui import DesktopApplication
 
 
@@ -20,10 +21,14 @@ def main() -> int:
     )
 
     provider, provider_error = create_configured_provider(settings)
+    tool_service = ToolExecutionService(
+        create_default_tool_registry(application_name=settings.application_name)
+    )
     application = Application(
         settings=settings,
         provider=provider,
         provider_error=provider_error,
+        tool_service=tool_service,
     )
     desktop_application = DesktopApplication(
         settings=settings,
