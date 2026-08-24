@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from .demo import GetApplicationStatusTool, GetLocalDateTimeTool
+from .windows_applications import LaunchApplicationTool
 from .registry import ToolRegistry
 
 
@@ -13,5 +14,6 @@ def create_default_tool_registry(*, application_name: str = "AURA") -> ToolRegis
         tools=(
             GetApplicationStatusTool(application_name=application_name),
             GetLocalDateTimeTool(),
+            LaunchApplicationTool(),
         )
     )

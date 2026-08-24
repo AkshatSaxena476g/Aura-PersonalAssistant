@@ -147,6 +147,11 @@ class Tool(ABC):
             raise ToolValidationError(
                 f"Argument '{name}' must be of type {expected_type}"
             )
+        if "enum" in schema and value not in schema["enum"]:
+            allowed = ", ".join(str(item) for item in schema["enum"])
+            raise ToolValidationError(
+                f"Argument '{name}' must be one of: {allowed}"
+            )
 
     @abstractmethod
     def execute(self, arguments: Mapping[str, Any]) -> ToolResult:

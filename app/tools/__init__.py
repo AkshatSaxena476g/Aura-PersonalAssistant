@@ -9,6 +9,7 @@ from .contracts import (
 )
 from .defaults import create_default_tool_registry
 from .registry import ToolRegistry
+from .windows_applications import LaunchApplicationTool
 
 __all__ = [
     "Tool",
@@ -17,5 +18,6 @@ __all__ = [
     "ToolRegistry",
     "ToolResult",
     "ToolValidationError",
+    "LaunchApplicationTool",
     "create_default_tool_registry",
 ]

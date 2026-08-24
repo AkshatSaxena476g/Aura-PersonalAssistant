@@ -177,13 +177,22 @@ def test_invalid_tool_result_is_safely_converted() -> None:
     assert result.error_code == "invalid_result"
 
 
-def test_default_registry_contains_only_safe_read_only_demonstrations() -> None:
+def test_default_registry_contains_safe_demos_and_controlled_launcher() -> None:
     registry = create_default_tool_registry(application_name="AURA")
 
-    assert registry.names == ("get_application_status", "get_local_datetime")
-    assert all(
-        definition.permission is ToolPermission.SAFE
-        for definition in registry.definitions()
+    assert registry.names == (
+        "get_application_status",
+        "get_local_datetime",
+        "launch_application",
+    )
+    definitions = {
+        definition.name: definition for definition in registry.definitions()
+    }
+    assert definitions["get_application_status"].permission is ToolPermission.SAFE
+    assert definitions["get_local_datetime"].permission is ToolPermission.SAFE
+    assert (
+        definitions["launch_application"].permission
+        is ToolPermission.CONFIRMATION_REQUIRED
     )
 
 
