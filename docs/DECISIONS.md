@@ -53,3 +53,21 @@
 **Decision:** A provider-requested tool turn retains its originating user message while awaiting confirmation. Once approved, cancelled, or completed with a structured failure, the conversation service commits that user message together with the local tool outcome represented as an assistant message. Safe tool calls and validation failures follow the same completed-turn rule.
 
 **Reason:** A tool result is part of the conversation state transition even when no second provider request is made. Recording the completed local outcome prevents the next user message from being sent with a history that silently omits the preceding tool turn. Pending state is cleared before decision handling, so stale or duplicate approvals cannot create another completed turn or execute the action twice.
+
+## D010: Use a Managed Qt Worker for Provider-Latency Requests
+
+**Decision:** The desktop composition layer owns a `ConversationRunner` that creates one `QThread` and worker object per active conversation request. The worker calls the existing application handler and emits a structured result through a Qt signal. The MainWindow remains responsible only for rendering and user controls; it never owns conversation logic or directly manipulates core state.
+
+**Reason:** Provider/network latency must not block the Qt event loop. A managed QObject/QThread boundary preserves the existing core and provider architecture, allows the window to remain responsive, prevents duplicate submissions, and provides deterministic cleanup after each request.
+
+## D011: Centralize the Initial Dark Theme
+
+**Decision:** The initial dark palette is defined in `app/ui/theme.py` and applied at the application/window boundary rather than scattered across individual event handlers or feature modules.
+
+**Reason:** A centralized stylesheet keeps the minimal UI coherent, makes contrast and disabled-state behavior easy to review, and avoids introducing an unrelated visual redesign while preserving the existing layout and confirmation controls.
+
+## D012: Preserve Provider Composition While Diagnosing Async Failures
+
+**Decision:** The configured `GeminiProvider`, `Application`, and `ConversationService` remain composed once at startup and are invoked through the existing managed Qt worker. Provider failures are diagnosed with redacted exception-type/detail logging and cross-thread tests before introducing provider-per-thread reconstruction or moving core state across threads.
+
+**Reason:** The direct and worker-backed requests reproduced the same HTTP 429 quota failure, so recreating the provider or moving conversation state would not address the actual cause and could introduce new history or confirmation races. The UI remains responsive without weakening the provider-neutral architecture.

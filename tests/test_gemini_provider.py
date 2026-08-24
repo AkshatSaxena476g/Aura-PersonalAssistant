@@ -1,3 +1,4 @@
+import logging
 from types import SimpleNamespace
 
 import pytest
@@ -73,6 +74,19 @@ def test_gemini_provider_translates_sdk_failure() -> None:
         provider.complete([ChatMessage(MessageRole.USER, "Hello")])
 
 
+def test_gemini_provider_logs_exception_type_and_redacts_api_key(caplog) -> None:
+    client = FakeClient(error=RuntimeError("test-key must not be logged"))
+    provider = GeminiProvider(api_key="test-key", model="gemini-test", client=client)
+
+    with caplog.at_level(logging.ERROR, logger="app.ai.gemini_provider"):
+        with pytest.raises(ProviderRequestError):
+            provider.complete([ChatMessage(MessageRole.USER, "Hello")])
+
+    assert "exception_type=RuntimeError" in caplog.text
+    assert "[REDACTED]" in caplog.text
+    assert "test-key must not be logged" not in caplog.text
+
+
 def test_gemini_provider_translates_registered_tool_definition_and_call() -> None:
     client = FakeClient(
         response=SimpleNamespace(
@@ -139,3 +153,19 @@ def test_gemini_provider_rejects_empty_conversation() -> None:
 
     with pytest.raises(ProviderRequestError, match="at least one message"):
         provider.complete([])
+
+
+class FakeQuotaError(Exception):
+    code = 429
+    status = "RESOURCE_EXHAUSTED"
+
+
+def test_gemini_provider_classifies_quota_exhaustion() -> None:
+    client = FakeClient(error=FakeQuotaError("quota detail must remain internal"))
+    provider = GeminiProvider(api_key="test-key", model="gemini-test", client=client)
+
+    with pytest.raises(ProviderRequestError, match="request quota is currently exhausted") as caught:
+        provider.complete([ChatMessage(MessageRole.USER, "Hello")])
+
+    assert "quota detail must remain internal" not in str(caught.value)
+    assert "network and API configuration" not in str(caught.value)

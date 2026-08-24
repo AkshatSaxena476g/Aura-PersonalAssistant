@@ -5,7 +5,7 @@ from __future__ import annotations
 from collections.abc import Callable
 from html import escape
 
-from PySide6.QtCore import Qt
+from PySide6.QtCore import Qt, Slot
 from PySide6.QtWidgets import (
     QHBoxLayout,
     QLabel,
@@ -19,8 +19,11 @@ from PySide6.QtWidgets import (
 
 from app.core.conversation import ConversationResult
 
+from .theme import AURA_DARK_THEME
+
 
 MessageHandler = Callable[[str], ConversationResult]
+AsyncMessageHandler = Callable[[str], bool]
 ConfirmationHandler = Callable[[str], ConversationResult]
 
 
@@ -32,6 +35,7 @@ class MainWindow(QMainWindow):
         application_name: str = "AURA",
         *,
         message_handler: MessageHandler | None = None,
+        async_message_handler: AsyncMessageHandler | None = None,
         approval_handler: ConfirmationHandler | None = None,
         cancellation_handler: ConfirmationHandler | None = None,
         startup_message: str | None = None,
@@ -39,9 +43,11 @@ class MainWindow(QMainWindow):
     ) -> None:
         super().__init__(parent)
         self.message_handler = message_handler
+        self.async_message_handler = async_message_handler
         self.approval_handler = approval_handler
         self.cancellation_handler = cancellation_handler
         self._pending_request_id: str | None = None
+        self._request_active = False
         self.setObjectName("auraMainWindow")
         self.setWindowTitle(f"{application_name} | Personal Desktop Assistant")
         self.setMinimumSize(560, 420)
@@ -122,74 +128,17 @@ class MainWindow(QMainWindow):
         self._apply_style()
 
     def _apply_style(self) -> None:
-        self.setStyleSheet(
-            """
-            QMainWindow {
-                background: #f5f7fa;
-            }
-            QLabel#auraTitle {
-                color: #243447;
-                font-size: 30px;
-                font-weight: 600;
-            }
-            QLabel#auraSubtitle {
-                color: #526477;
-                font-size: 15px;
-            }
-            QTextBrowser#conversationDisplay {
-                background: #ffffff;
-                border: 1px solid #d8e0e8;
-                border-radius: 6px;
-                color: #243447;
-                font-size: 14px;
-                padding: 8px;
-            }
-            QWidget#confirmationPanel {
-                background: #edf4fb;
-                border: 1px solid #b9cfe5;
-                border-radius: 6px;
-            }
-            QLabel#confirmationLabel {
-                color: #243447;
-                font-size: 13px;
-            }
-            QLineEdit#messageInput {
-                background: #ffffff;
-                border: 1px solid #c5d0dc;
-                border-radius: 5px;
-                color: #243447;
-                padding: 9px;
-            }
-            QPushButton#sendButton, QPushButton#allowButton {
-                background: #3d6f9f;
-                border: none;
-                border-radius: 5px;
-                color: #ffffff;
-                font-weight: 600;
-                padding: 9px 18px;
-            }
-            QPushButton#sendButton:hover, QPushButton#allowButton:hover {
-                background: #315d87;
-            }
-            QPushButton#cancelButton {
-                background: #ffffff;
-                border: 1px solid #b9c5d1;
-                border-radius: 5px;
-                color: #33485c;
-                padding: 8px 16px;
-            }
-            """
-        )
+        self.setStyleSheet(AURA_DARK_THEME)
 
     def _append_message(self, speaker: str, content: str) -> None:
         safe_speaker = escape(speaker)
         safe_content = escape(content).replace("\n", "<br>")
         self.conversation_display.append(
-            f'<p><b style="color:#3d6f9f;">{safe_speaker}</b><br>{safe_content}</p>'
+            f'<p><b style="color:#79b7e8;">{safe_speaker}</b><br>{safe_content}</p>'
         )
 
     def _send_message(self) -> None:
-        if self._pending_request_id is not None:
+        if self._pending_request_id is not None or self._request_active:
             return
         text = self.message_input.text()
         if not text.strip():
@@ -199,9 +148,29 @@ class MainWindow(QMainWindow):
 
         self.message_input.clear()
         self._append_message("You", text.strip())
-        self.send_button.setEnabled(False)
-        self.statusBar().showMessage("Thinking...")
+        self._request_active = True
+        self._set_request_controls_busy(True)
+        self.statusBar().showMessage("AURA is thinking...")
 
+        if self.async_message_handler is not None:
+            try:
+                accepted = self.async_message_handler(text)
+            except Exception:
+                accepted = False
+            if accepted:
+                return
+            self._request_active = False
+            self._set_request_controls_busy(False)
+            self._render_result(
+                ConversationResult(
+                    error_message="AURA is already processing another request."
+                )
+            )
+            return
+
+        self._run_synchronous_message(text)
+
+    def _run_synchronous_message(self, text: str) -> None:
         try:
             result = (
                 self.message_handler(text)
@@ -216,13 +185,30 @@ class MainWindow(QMainWindow):
                     "I couldn't complete that request because an unexpected error occurred."
                 )
             )
+        self._handle_conversation_result(result)
 
+    @Slot(object)
+    def handle_async_result(self, result: object) -> None:
+        """Receive a worker result on the Qt main thread."""
+
+        if not isinstance(result, ConversationResult):
+            result = ConversationResult(
+                error_message="AURA received an invalid conversation result."
+            )
+        self._handle_conversation_result(result)
+
+    def _handle_conversation_result(self, result: ConversationResult) -> None:
+        self._request_active = False
         if result.pending_tool is not None:
             self._show_confirmation(result)
             return
 
-        self.send_button.setEnabled(True)
+        self._set_request_controls_busy(False)
         self._render_result(result)
+
+    def _set_request_controls_busy(self, busy: bool) -> None:
+        self.message_input.setEnabled(not busy)
+        self.send_button.setEnabled(not busy)
 
     def _show_confirmation(self, result: ConversationResult) -> None:
         """Show one pending request and lock out competing user actions."""
@@ -249,8 +235,7 @@ class MainWindow(QMainWindow):
                 self.approval_handler(request_id)
                 if self.approval_handler is not None
                 else ConversationResult(
-                    tool_result=None,
-                    error_message="Tool approval is unavailable.",
+                    error_message="Tool approval is unavailable."
                 )
             )
         except Exception:
@@ -284,8 +269,8 @@ class MainWindow(QMainWindow):
 
     def _finish_confirmation(self) -> None:
         self.confirmation_panel.setVisible(False)
-        self.message_input.setEnabled(True)
-        self.send_button.setEnabled(True)
+        self._request_active = False
+        self._set_request_controls_busy(False)
 
     def _render_result(self, result: ConversationResult) -> None:
         if result.assistant_message is not None:
@@ -294,12 +279,12 @@ class MainWindow(QMainWindow):
             return
 
         if result.tool_result is not None:
-            if result.tool_result.success:
-                self._append_message("AURA", result.tool_result.message)
-                self.statusBar().showMessage("Tool action completed")
-            else:
-                self._append_message("AURA", result.tool_result.message)
-                self.statusBar().showMessage("Tool action cancelled or failed")
+            self._append_message("AURA", result.tool_result.message)
+            self.statusBar().showMessage(
+                "Tool action completed"
+                if result.tool_result.success
+                else "Tool action cancelled or failed"
+            )
             return
 
         if result.error_message:

@@ -44,7 +44,7 @@ AURA/
 └── .env.example
 ```
 
-The Phase 5 foundation supports normal text conversation and provider-neutral Gemini tool calling. Gemini receives function declarations derived from the active `ToolRegistry`; every call is validated and routed through `ToolExecutionService`. Confirmation-required actions display Allow/Cancel controls and cannot execute before approval. The current registered capabilities remain limited to safe demonstrations and the controlled four-application Windows launcher. File management, shell execution, web/media control, voice, text-to-speech, wake-word behavior, persistent memory, and autonomous actions remain unavailable.
+The Phase 5 foundation supports normal text conversation and provider-neutral Gemini tool calling. Gemini receives function declarations derived from the active `ToolRegistry`; every call is validated and routed through `ToolExecutionService`. Confirmation-required actions display Allow/Cancel controls and cannot execute before approval. Conversation requests run through a managed Qt worker so the desktop remains responsive while waiting for the provider. The UI uses a restrained dark theme defined centrally in `app/ui/theme.py`. The current registered capabilities remain limited to safe demonstrations and the controlled four-application Windows launcher. File management, shell execution, web/media control, voice, text-to-speech, wake-word behavior, persistent memory, and autonomous actions remain unavailable.
 
 ## Local setup
 
@@ -71,4 +71,4 @@ Run the automated tests with:
 py -m pytest
 ```
 
-For headless test environments, set `QT_QPA_PLATFORM=offscreen` before running pytest.
+For headless test environments, set `QT_QPA_PLATFORM=offscreen` before running pytest. The automated suite includes worker-thread, response/error restoration, duplicate-submission, dark-theme, tool-calling, and confirmation-flow coverage.

@@ -45,6 +45,7 @@ class GeminiProvider:
             )
 
         self.model = model.strip()
+        self._credential_for_redaction = api_key.strip()
         if client is not None:
             self._client = client
         else:
@@ -124,8 +125,17 @@ class GeminiProvider:
                 contents=contents,
                 config=config,
             )
-        except Exception:
-            logger.error("Gemini request failed")
+        except Exception as error:
+            logger.error(
+                "Gemini request failed (exception_type=%s, detail=%s)",
+                type(error).__name__,
+                self._safe_error_detail(error),
+            )
+            if self._is_quota_exhausted(error):
+                raise ProviderRequestError(
+                    "Gemini request quota is currently exhausted for the configured model. "
+                    "Please retry after the quota resets or check the Gemini API usage and billing settings."
+                ) from None
             raise ProviderRequestError(
                 "Gemini could not complete the request. Check your network and API configuration."
             ) from None
@@ -145,6 +155,20 @@ class GeminiProvider:
             message=ChatMessage(MessageRole.ASSISTANT, response_text),
             finish_reason=None,
         )
+
+    @staticmethod
+    def _is_quota_exhausted(error: Exception) -> bool:
+        """Recognize an SDK/API response that explicitly indicates HTTP 429 quota exhaustion."""
+
+        code = getattr(error, "code", None)
+        status = getattr(error, "status", None)
+        return code == 429 or status == "RESOURCE_EXHAUSTED"
+
+    def _safe_error_detail(self, error: Exception) -> str:
+        """Return bounded exception detail with the configured key redacted."""
+
+        detail = str(error).replace(self._credential_for_redaction, "[REDACTED]")
+        return detail[:500] or "(no exception detail)"
 
     @staticmethod
     def _translate_function_call(raw_call: object) -> ProviderResponse:

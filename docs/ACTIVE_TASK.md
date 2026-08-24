@@ -1,21 +1,25 @@
 ## Task
 
-Phase 5 post-tool conversation regression fix — complete.
+Diagnose and safely handle the Gemini request failure observed after the managed background-worker and dark-theme update — complete. Do not begin Phase 6.
 
-## Completed
+## Exact Root Cause
 
-The conversation service now commits the original user message and the completed or cancelled tool outcome into provider-neutral conversation history. Pending tool requests retain the originating user message, and approval/cancellation clears the pending state before handling. Stale or duplicate approval attempts remain non-executable.
+The configured provider initialized successfully. A fresh redacted comparison issued one minimal request directly through `GeminiProvider.complete(...)` and one through the exact desktop path `ConversationRunner` → `Application.send_message` → `ConversationService` → `GeminiProvider` → Google GenAI SDK. Both reached `self._client.models.generate_content` and raised `google.genai.errors.ClientError` with HTTP `429 RESOURCE_EXHAUSTED`.
 
-## Current Progress
+The API detail identified exhausted free-tier `generate_content` request quota for the configured model. This is an external Gemini account/model quota condition. It is not a Qt cross-thread failure, altered worker argument, provider initialization error, malformed AURA request, or conversation-state regression. The worker update only moved the blocking call off the UI thread and delivered its result asynchronously; it did not change the provider request or cause the API rejection.
 
-The reported sequence was reproduced with focused mock providers: after an approved confirmation-required action, the next unrelated turn was built without the completed tool turn in history. The fix was implemented without keyword-specific branching. Regression coverage now verifies normal follow-up responses, no reuse of prior `ToolResult` values, no accidental `get_application_status` execution, and no stale state after cancellation.
+## Completed Changes
 
-The complete suite passes with 64 tests, and the Windows desktop entry point launches successfully. No real Gemini request or uncontrolled external application action was used for automated validation.
+`GeminiProvider` continues to log only the exception type and bounded detail with the configured credential redacted. It now detects an explicit SDK/API HTTP 429 or `RESOURCE_EXHAUSTED` status and returns a safe quota-specific `ProviderRequestError`. Non-quota failures retain the generic network/API configuration message. No API key or `.env` value was printed, changed, regenerated, or committed.
+
+The existing composition remains intact: one configured provider, one `Application`/`ConversationService`, and one managed `ConversationRunner` request thread at a time. Provider calls remain off the Qt UI thread, and only structured results cross back to the main thread. Tool validation, controlled execution, confirmation-required launcher behavior, Allow/Cancel handling, post-tool history commits, dark theme, and UI restoration were not bypassed or rewritten.
+
+## Validation
+
+Focused provider and worker tests pass with **13 tests**. The complete suite passes with **71 tests**. The package wheel builds successfully. A Windows launch using `python.exe main.py` showed `AURA | Personal Desktop Assistant - AURA` and remained running until clean smoke-test shutdown.
+
+The fresh direct live request and the fresh worker-path live request both reached Gemini and returned the same redacted HTTP 429 quota response. Live normal conversation, sequential messages, arithmetic, and live Calculator Allow/Cancel could not be exercised against Gemini because the service rejected the initial request. Mocked automated coverage continues to verify the normal conversation, tool-call, confirmation, cancellation, responsiveness, state-restoration, and mocked external-launch behavior.
 
 ## Next Action
 
-Begin Phase 6: Web, YouTube, and Media only after explicit approval to start the next phase. Continue using the existing provider-neutral tool, validation, permission, confirmation, and structured-result boundaries.
-
-## Completion Criteria
-
-This bug-fix task is complete when the full suite passes, the Windows application launches, the approved and cancelled post-tool sequences are covered by regression tests, and the next unrelated message is processed as a fresh conversation turn. All criteria are satisfied.
+Keep Phase 6 deferred. When the external Gemini quota becomes available, manually rerun a normal conversation, sequential messages, arithmetic, and the Calculator Allow and Cancel flows. No code change can restore an exhausted external quota; the current implementation now reports that condition explicitly and safely.

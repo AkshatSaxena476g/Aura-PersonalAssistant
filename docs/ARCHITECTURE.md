@@ -72,6 +72,8 @@ Validation and permission inspection
 
 The `ConversationService` owns pending confirmation state and request identifiers. Approval and cancellation are exposed through `Application` methods so UI widgets never invoke tools directly. Pending requests are cleared before execution or cancellation, making stale and duplicate approval attempts non-executable.
 
+Conversation requests that may involve network/provider latency are submitted by the desktop composition layer to a managed `QThread` worker. The worker invokes the existing application callback and emits a structured result through a Qt signal. Only the main Qt thread updates widgets, confirmation controls, status text, or conversation display state. The worker owns one request at a time and releases its thread after completion.
+
 ## Proposed Application Layout
 
 ```text
