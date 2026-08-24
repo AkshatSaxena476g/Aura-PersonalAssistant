@@ -7,36 +7,39 @@ Project documentation, architecture, repository structure, configuration strateg
 PySide6 application, basic interface, application lifecycle, and settings foundation.
 
 ## Phase 2: AI Core
-Provider abstraction, model integration, conversation handling, and structured AI responses.
+Provider abstraction, Gemini model integration, conversation handling, and structured AI responses.
 
 ## Phase 3: Tool System
-Tool definitions, centralized registry, validation, execution flow, and tool result handling.
+Provider-independent tool definitions, centralized registry, validation, permission policy, controlled execution, and structured tool results.
 
 ## Phase 4: Basic Computer Control
-Open applications, basic system controls, and confirmation mechanisms.
+The first narrowly scoped Windows action: confirmation-aware launching of an internal allow-list of approved applications.
 
-## Phase 5: File and Folder Management
-Search, create, move, copy, rename, and safely delete files and folders.
+## Phase 5: AI Tool Calling Integration
+Provider-neutral tool-call representation, provider-derived tool declarations, Gemini function-call translation, registry-based discovery, confirmation state, and controlled AI-requested tool execution.
 
 ## Phase 6: Web, YouTube, and Media
-Web actions, website opening, YouTube search and playback, and supported media control.
+Explicitly scoped web actions, website opening, YouTube search and playback, and supported media control through validated tools.
 
-## Phase 7: Voice Interaction
+## Phase 7: File and Folder Management
+Search, create, move, copy, rename, and safely delete files and folders through validated and confirmation-aware tools.
+
+## Phase 8: Voice Interaction
 Microphone input, speech-to-text, text-to-speech, and push-to-talk.
 
-## Phase 8: Wake Word and Background Mode
+## Phase 9: Wake Word and Background Mode
 Wake-word activation, background operation, and optional startup behavior.
 
-## Phase 9: Memory and Personalization
+## Phase 10: Memory and Personalization
 Persistent settings, relevant long-term memory, preferences, and personalized behavior.
 
-## Phase 10: Advanced Automation
+## Phase 11: Advanced Automation
 Multi-step tasks, routines, scheduled actions, and controlled autonomous workflows.
 
-## Phase 11: UI, Personality, and Polish
+## Phase 12: UI, Personality, and Polish
 Final visual identity, personality behavior, animations, settings, and usability refinement.
 
-## Phase 12: Testing, Security, and Packaging
+## Phase 13: Testing, Security, and Packaging
 Testing, error handling, safety review, packaging, installation, and release preparation.
 
 ## Development Rule

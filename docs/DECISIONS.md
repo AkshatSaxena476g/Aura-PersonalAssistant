@@ -41,3 +41,9 @@
 **Decision:** AURA is composed and capable by default, natural and conversational when appropriate, and occasionally playful.
 
 **Reason:** The assistant should feel personal without allowing personality to reduce reliability during important tasks.
+
+## D008: Use a Provider-Neutral Tool-Call Boundary
+
+**Decision:** AI providers translate vendor-specific function-call responses into provider-neutral `ToolCallRequest` values. The assistant core derives exposed definitions from the active `ToolRegistry`, validates and prepares requests through `ToolExecutionService`, and owns confirmation state through `PendingToolRequest` values.
+
+**Reason:** This allows Gemini tool calling to be added without coupling the core or UI to Gemini SDK objects. It also ensures every AI-requested action follows the same registry, validation, permission, confirmation, and structured-result path as direct application requests. Confirmation is handled through `Application` boundaries rather than direct widget-to-tool calls, and request identifiers prevent stale or duplicate approval from executing an action twice.

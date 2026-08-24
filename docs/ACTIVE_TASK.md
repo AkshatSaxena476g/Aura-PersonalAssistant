@@ -1,23 +1,22 @@
 ## Task
 
-Begin Phase 5: File and Folder Management.
+Begin Phase 6: Web, YouTube, and Media.
 
 ## Objectives
 
-- Extend the existing provider-independent tool system with explicitly scoped file and folder operations.
-- Validate all paths and arguments before execution.
-- Require confirmation for destructive or irreversible changes.
-- Preserve centralized registration, permission policy, structured results, and safe error handling.
-- Keep Gemini text conversation and the Phase 4 allow-listed application launcher functional.
+- Add only explicitly scoped web and media capabilities through the existing provider-independent tool system.
+- Derive any provider-facing declarations from the active `ToolRegistry` rather than maintaining provider-specific tool lists.
+- Preserve validation, permission, confirmation, structured results, and safe failure handling.
+- Keep Gemini tool calling, normal text conversation, and the Phase 4 allow-listed application launcher functional.
 
 ## Current Progress
 
-Phase 4 is complete. AURA now has a Windows-specific `launch_application` tool that supports only the internal identifiers `notepad`, `calculator`, `settings`, and `file_explorer`. The fixed targets are resolved internally, application launching is confirmation-required, external launches are mocked in tests, and Gemini is not connected directly to tool execution.
+Phase 5 is complete. AURA now translates Gemini function calls into provider-neutral `ToolCallRequest` values, derives Gemini declarations from the active registry, routes requests through `ToolExecutionService`, and manages confirmation-required actions through `Application` and the simple PySide6 Allow/Cancel panel. Sixty-one automated tests pass, the package builds successfully, and the Windows desktop entry point launches successfully.
 
 ## Next Action
 
-Design and implement the smallest safe Phase 5 file/folder capability on top of `ToolExecutionService`. Use explicit path validation, prevent unintended traversal or broad modification, and keep destructive operations confirmation-aware. Do not add unrestricted file or folder mutation.
+Design and implement the smallest safe Phase 6 web/media capability on top of the existing tool and provider-neutral boundaries. Keep browser or media operations explicitly scoped and confirmation-aware where appropriate. Do not add unrestricted browser automation, arbitrary URLs, voice features, memory, or autonomous actions.
 
 ## Completion Criteria
 
-The next task is complete when the selected file/folder operations are implemented as explicit validated tools with correct permission behavior, safe failures, focused Windows tests, and no regressions in the existing conversation, tool, and application-launch functionality.
+The next task is complete when the selected web/media capability is represented as an explicit registered tool with validated inputs, correct permission behavior, safe structured results, focused mocked tests, and no regression in normal conversation, Gemini tool calling, confirmation flow, or Windows application launching.

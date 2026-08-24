@@ -1,39 +1,43 @@
 ## Current Phase
 
-Phase 4: Basic Computer Control — complete.
+Phase 5: AI Tool Calling Integration — complete.
 
 ## Completed
 
-- Phases 0–3 remain intact, including the replaceable Gemini provider layer, provider-agnostic conversation service, PySide6 desktop lifecycle, centralized tool registry, schema validation, structured results, and permission boundary.
-- `app/tools/windows_applications.py` adds `LaunchApplicationTool` using the existing `Tool` contract and `ToolExecutionService`.
-- The launcher accepts only the normalized internal identifiers `notepad`, `calculator`, `settings`, and `file_explorer`.
-- Internal fixed targets resolve those identifiers to `notepad.exe`, `calc.exe`, `ms-settings:`, and `explorer.exe`. User-provided executable paths, commands, URLs, arguments, and shell expressions are not accepted.
-- Windows launching uses `subprocess.Popen` with an argument list and `shell=False` for executable targets, and `os.startfile` for the Windows Settings URI. No unrestricted command interpreter is used.
-- Application launching is declared `confirmation_required`, so the execution service blocks it unless explicit confirmation or an injected confirmation handler approves the validated request.
-- The launcher is registered through `create_default_tool_registry()` and exposed through the existing `Application.execute_tool()` boundary. Gemini function calling is not connected to tools.
-- Mocked tests cover every supported application, normalization, unsupported identifiers, arbitrary paths and arguments, confirmation behavior, permission behavior, launch failures, unsupported platforms, registry integration, and structured results.
-- README documentation was updated to reflect the controlled application-launching capability.
+- Phases 0–4 remain intact, including the replaceable Gemini provider layer, provider-agnostic conversation service, PySide6 desktop lifecycle, centralized tool registry, validation, permission policies, and controlled Windows application launching.
+- `app/ai/provider.py` now defines the provider-neutral `ToolCallRequest` type and allows providers to receive optional registered `ToolDefinition` values without exposing SDK-specific objects to the core.
+- `ProviderResponse` now represents exactly one normal assistant message or one provider-neutral tool-call request.
+- `app/ai/gemini_provider.py` derives Gemini function declarations from the active registry definitions, translates Gemini function calls into `ToolCallRequest`, disables automatic SDK execution, and safely handles malformed calls and provider failures.
+- `ConversationService` now passes definitions from the active `ToolRegistry` to the provider, prepares provider-requested tools through `ToolExecutionService`, executes safe tools locally, and creates confirmation state for confirmation-required tools.
+- `PendingToolRequest` preserves the exact validated request, a stable request identifier, and a user-facing confirmation message. Approval and cancellation are routed through `Application` methods rather than directly from widgets to tools.
+- Pending requests are cleared before approval or cancellation, and stale/duplicate approval attempts cannot execute a tool twice.
+- `MainWindow` now includes a minimal confirmation panel with Allow and Cancel controls, locks competing input while a request is pending, and renders successful, cancelled, and failed tool results distinctly from normal assistant responses.
+- `DesktopApplication` and `main.py` inject the application-level approval and cancellation callbacks while keeping provider and tool logic outside the UI.
+- No new tools were added. Gemini receives only the definitions currently returned by the active `ToolRegistry`: the two safe demonstrations and the existing confirmation-required application launcher.
+- `ARCHITECTURE.md` and `DECISIONS.md` document the new provider-neutral tool-call and confirmation boundary.
+- Mocked tests cover normal text conversation, neutral tool-call representation, registry-derived discovery, Gemini declaration/call translation, malformed calls, safe tool execution, confirmation gating, approval, cancellation, stale approvals, duplicate prevention, UI controls, and regressions.
 
 ## Currently Working On
 
-Phase 4 is complete. AURA can now request a narrowly scoped, confirmation-aware launch of one of four internally allow-listed Windows applications through the provider-independent tool system.
+Phase 5 is complete. AURA now supports a single-request Gemini tool-call flow with local validation and controlled execution. Confirmation-required actions remain blocked until the user explicitly chooses Allow.
 
 ## Next Task
 
-Begin Phase 5: File and Folder Management. Extend the existing tool boundary only with explicitly scoped, validated file operations, confirmation for destructive changes, and Windows-focused tests. Do not add arbitrary file paths or deletion behavior without the required safety controls.
+Begin Phase 6: Web, YouTube, and Media. Add only explicitly scoped web/media capabilities through the existing tool system, with provider-independent contracts, validation, permission checks, and confirmation where required. Do not add browser automation or media control without those boundaries.
 
 ## Validation
 
-- `QT_QPA_PLATFORM=offscreen py -3.12 -m pytest -q`: 48 tests passed.
-- Package wheel build: completed successfully after adding the Windows launcher.
+- `QT_QPA_PLATFORM=offscreen py -3.12 -m pytest -q`: 61 tests passed.
+- Package wheel build: completed successfully after adding provider-neutral tool calling.
 - `py main.py` on Windows: launched successfully with the local configuration; the validation process reported the window title `AURA | Personal Desktop Assistant - AURA` and was then closed cleanly.
-- Automated external launches were mocked; no real application was opened during tests.
+- Gemini API calls were mocked in automated tests; no real Gemini request was made during validation.
+- External application launches were mocked in tests; no real Calculator, Notepad, Settings, or File Explorer launch was performed by the test suite.
 - Temporary build and editable-install artifacts were removed after validation.
 
 ## Known Issues
 
-No known implementation issues. The launcher is intentionally Windows-only, confirmation-required, and not connected to Gemini or the chat UI. Shell execution, arbitrary executable launching, process termination, file modification, browser automation, voice, media control, memory, and autonomous actions remain unavailable.
+No known implementation issues. The Phase 5 flow intentionally stops after one provider request: successful safe tools return a direct local result, while confirmation-required tools display Allow/Cancel and return a direct structured result after approval or cancellation. A second Gemini request for result rephrasing was deliberately not added. File management, web/media control, voice, text-to-speech, wake-word behavior, persistent memory, autonomous actions, and broader computer control remain outside the current scope.
 
 ## Last Updated
 
-2026-08-23 — Phase 4 controlled Windows application launching implemented and verified.
+2026-08-23 — Phase 5 provider-neutral Gemini tool calling and confirmation flow implemented and verified.

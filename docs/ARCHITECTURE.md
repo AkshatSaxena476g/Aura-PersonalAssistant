@@ -40,6 +40,38 @@ UI / Text-to-Speech
 - UI logic should remain separate from assistant and tool logic.
 - Voice providers should also be replaceable where practical.
 
+## Provider-Neutral Tool-Calling Flow
+
+Provider-specific function-calling responses are translated inside the AI provider layer into the neutral `ToolCallRequest` type. The assistant core never receives Gemini SDK objects. Registered `ToolDefinition` values are derived from the active `ToolRegistry` and passed to the provider for declaration; Gemini-specific declarations are not maintained separately.
+
+The execution path is:
+
+```text
+User / UI
+    ↓
+ConversationService
+    ↓
+AIProvider.complete(messages, tool_definitions)
+    ↓
+Provider-neutral ToolCallRequest
+    ↓
+ToolExecutionService.prepare()
+    ↓
+Validation and permission inspection
+    ├── safe tool → controlled local execution
+    └── confirmation-required tool → PendingToolRequest
+                                      ↓
+                                UI Allow / Cancel
+                                      ↓
+                            ToolExecutionService.execute_prepared()
+                                      ↓
+                                Structured ToolResult
+                                      ↓
+                                      UI
+```
+
+The `ConversationService` owns pending confirmation state and request identifiers. Approval and cancellation are exposed through `Application` methods so UI widgets never invoke tools directly. Pending requests are cleared before execution or cancellation, making stale and duplicate approval attempts non-executable.
+
 ## Proposed Application Layout
 
 ```text

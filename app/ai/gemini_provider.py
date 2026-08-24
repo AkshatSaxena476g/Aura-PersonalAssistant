@@ -3,10 +3,12 @@
 from __future__ import annotations
 
 import logging
-from collections.abc import Sequence
+from collections.abc import Mapping, Sequence
 
 from google import genai
 from google.genai import types
+
+from app.tools.contracts import ToolDefinition
 
 from .provider import (
     AIProvider,
@@ -15,13 +17,14 @@ from .provider import (
     ProviderConfigurationError,
     ProviderRequestError,
     ProviderResponse,
+    ToolCallRequest,
 )
 
 logger = logging.getLogger(__name__)
 
 
 class GeminiProvider:
-    """Synchronous text provider backed by Google's official GenAI SDK."""
+    """Synchronous text and manual-tool-call provider using Google's GenAI SDK."""
 
     name = "gemini"
 
@@ -53,8 +56,31 @@ class GeminiProvider:
                     "Gemini could not be initialized. Check the API configuration."
                 ) from None
 
-    def complete(self, messages: Sequence[ChatMessage]) -> ProviderResponse:
-        """Send the conversation to Gemini and return a normalized response."""
+    @staticmethod
+    def _function_tools(
+        tool_definitions: Sequence[ToolDefinition],
+    ) -> list[types.Tool]:
+        """Translate registered AURA definitions into SDK declarations."""
+
+        if not tool_definitions:
+            return []
+        declarations = [
+            types.FunctionDeclaration(
+                name=definition.name,
+                description=definition.description,
+                parameters_json_schema=dict(definition.input_schema),
+            )
+            for definition in tool_definitions
+        ]
+        return [types.Tool(function_declarations=declarations)]
+
+    def complete(
+        self,
+        messages: Sequence[ChatMessage],
+        *,
+        tool_definitions: Sequence[ToolDefinition] = (),
+    ) -> ProviderResponse:
+        """Send text and registered tool declarations, returning text or one call."""
 
         if not messages:
             raise ProviderRequestError("Gemini requires at least one message.")
@@ -67,7 +93,7 @@ class GeminiProvider:
                 continue
             if message.role == MessageRole.TOOL:
                 raise ProviderRequestError(
-                    "Tool messages are not supported during text conversation."
+                    "Tool result messages are not supported in this conversation flow."
                 )
 
             sdk_role = "model" if message.role == MessageRole.ASSISTANT else "user"
@@ -81,11 +107,16 @@ class GeminiProvider:
         if not contents:
             raise ProviderRequestError("Gemini requires user or assistant content.")
 
-        config = None
+        function_tools = self._function_tools(tool_definitions)
+        config_kwargs: dict[str, object] = {}
         if system_instructions:
-            config = types.GenerateContentConfig(
-                system_instruction="\n\n".join(system_instructions),
+            config_kwargs["system_instruction"] = "\n\n".join(system_instructions)
+        if function_tools:
+            config_kwargs["tools"] = function_tools
+            config_kwargs["automatic_function_calling"] = (
+                types.AutomaticFunctionCallingConfig(disable=True)
             )
+        config = types.GenerateContentConfig(**config_kwargs) if config_kwargs else None
 
         try:
             response = self._client.models.generate_content(
@@ -93,13 +124,20 @@ class GeminiProvider:
                 contents=contents,
                 config=config,
             )
-            response_text = (response.text or "").strip()
         except Exception:
             logger.error("Gemini request failed")
             raise ProviderRequestError(
                 "Gemini could not complete the request. Check your network and API configuration."
             ) from None
 
+        raw_function_calls = getattr(response, "function_calls", None) or []
+        if raw_function_calls:
+            return self._translate_function_call(raw_function_calls[0])
+
+        try:
+            response_text = (response.text or "").strip()
+        except Exception:
+            response_text = ""
         if not response_text:
             raise ProviderRequestError("Gemini returned an empty response.")
 
@@ -107,6 +145,28 @@ class GeminiProvider:
             message=ChatMessage(MessageRole.ASSISTANT, response_text),
             finish_reason=None,
         )
+
+    @staticmethod
+    def _translate_function_call(raw_call: object) -> ProviderResponse:
+        """Convert one SDK call object into AURA's neutral call representation."""
+
+        name = getattr(raw_call, "name", None)
+        arguments = getattr(raw_call, "args", None)
+        call_id = getattr(raw_call, "id", None)
+        if not isinstance(name, str) or not name.strip():
+            raise ProviderRequestError("Gemini returned a malformed tool call.")
+        if not isinstance(arguments, Mapping):
+            raise ProviderRequestError("Gemini returned malformed tool arguments.")
+
+        try:
+            request = ToolCallRequest(
+                name=name,
+                arguments=dict(arguments),
+                call_id=call_id if isinstance(call_id, str) else None,
+            )
+        except (TypeError, ValueError):
+            raise ProviderRequestError("Gemini returned a malformed tool call.") from None
+        return ProviderResponse(tool_call=request)
 
     def close(self) -> None:
         """Release the SDK client's network resources when supported."""

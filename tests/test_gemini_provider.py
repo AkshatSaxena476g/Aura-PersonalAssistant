@@ -9,6 +9,7 @@ from app.ai import (
     ProviderConfigurationError,
     ProviderRequestError,
 )
+from app.tools import ToolDefinition, ToolPermission
 
 
 class FakeModels:
@@ -70,6 +71,66 @@ def test_gemini_provider_translates_sdk_failure() -> None:
 
     with pytest.raises(ProviderRequestError, match="network and API configuration"):
         provider.complete([ChatMessage(MessageRole.USER, "Hello")])
+
+
+def test_gemini_provider_translates_registered_tool_definition_and_call() -> None:
+    client = FakeClient(
+        response=SimpleNamespace(
+            text="",
+            function_calls=[
+                SimpleNamespace(
+                    name="launch_application",
+                    args={"application": "calculator"},
+                    id="call-1",
+                )
+            ],
+        )
+    )
+    provider = GeminiProvider(api_key="test-key", model="gemini-test", client=client)
+    definition = ToolDefinition(
+        name="launch_application",
+        description="Launch an approved application.",
+        permission=ToolPermission.CONFIRMATION_REQUIRED,
+        input_schema={
+            "type": "object",
+            "properties": {
+                "application": {
+                    "type": "string",
+                    "enum": ["calculator"],
+                }
+            },
+            "required": ["application"],
+            "additionalProperties": False,
+        },
+    )
+
+    result = provider.complete(
+        [ChatMessage(MessageRole.USER, "Open Calculator")],
+        tool_definitions=[definition],
+    )
+
+    tool_call = result.tool_call
+    assert tool_call.name == "launch_application"
+    assert tool_call.arguments == {"application": "calculator"}
+    assert tool_call.call_id == "call-1"
+    config = client.models.calls[0]["config"]
+    declaration = config.tools[0].function_declarations[0]
+    assert declaration.name == "launch_application"
+    assert declaration.parameters_json_schema["required"] == ["application"]
+    assert config.automatic_function_calling.disable is True
+
+
+def test_gemini_provider_rejects_malformed_tool_call() -> None:
+    client = FakeClient(
+        response=SimpleNamespace(
+            text="",
+            function_calls=[SimpleNamespace(name="launch_application", args=None)],
+        )
+    )
+    provider = GeminiProvider(api_key="test-key", model="gemini-test", client=client)
+
+    with pytest.raises(ProviderRequestError, match="malformed tool arguments"):
+        provider.complete([ChatMessage(MessageRole.USER, "Open Calculator")])
 
 
 def test_gemini_provider_rejects_empty_conversation() -> None:

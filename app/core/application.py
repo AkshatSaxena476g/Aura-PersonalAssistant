@@ -40,6 +40,7 @@ class Application:
                         "personal desktop assistant. Keep responses concise and clear."
                     ),
                 ),
+                tool_service=tool_service,
             )
             if provider is not None
             else None
@@ -67,6 +68,24 @@ class Application:
                 or "No AI provider is configured for conversation.",
             )
         return self.conversation.send(text)
+
+    def approve_tool_call(self, request_id: str) -> ConversationResult:
+        """Approve the exact pending provider-requested tool call."""
+
+        if self.conversation is None:
+            return ConversationResult(
+                error_message="No AI conversation is configured."
+            )
+        return self.conversation.approve_pending(request_id)
+
+    def cancel_tool_call(self, request_id: str) -> ConversationResult:
+        """Cancel the exact pending provider-requested tool call."""
+
+        if self.conversation is None:
+            return ConversationResult(
+                error_message="No AI conversation is configured."
+            )
+        return self.conversation.cancel_pending(request_id)
 
     def execute_tool(
         self,

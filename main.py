@@ -33,6 +33,8 @@ def main() -> int:
     desktop_application = DesktopApplication(
         settings=settings,
         message_handler=application.send_message,
+        approval_handler=application.approve_tool_call,
+        cancellation_handler=application.cancel_tool_call,
         startup_message=application.status_message,
     )
 

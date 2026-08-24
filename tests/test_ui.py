@@ -1,4 +1,5 @@
 import os
+from types import SimpleNamespace
 
 import pytest
 from PySide6.QtWidgets import QApplication, QLabel
@@ -6,6 +7,7 @@ from PySide6.QtWidgets import QApplication, QLabel
 from app.ai import ChatMessage, MessageRole
 from app.config import Settings
 from app.core import Application, ConversationResult
+from app.tools import ToolResult
 from app.ui import MainWindow
 
 
@@ -67,6 +69,82 @@ def test_main_window_handles_empty_text_without_calling_core(qapplication: QAppl
 
     assert received == []
     assert "Please enter a message." in window.conversation_display.toPlainText()
+
+    window.close()
+
+
+def test_main_window_shows_confirmation_and_approves_once(qapplication: QApplication) -> None:
+    approvals: list[str] = []
+    sends: list[str] = []
+    pending = SimpleNamespace(
+        request_id="ui-call-1",
+        confirmation_message="I can open Calculator. Do you want me to proceed?",
+    )
+
+    def handle_message(text: str) -> ConversationResult:
+        sends.append(text)
+        return ConversationResult(pending_tool=pending)
+
+    def approve(request_id: str) -> ConversationResult:
+        approvals.append(request_id)
+        return ConversationResult(
+            tool_result=ToolResult.ok("Calculator launch requested.")
+        )
+
+    window = MainWindow(
+        message_handler=handle_message,
+        approval_handler=approve,
+    )
+    window.message_input.setText("Open Calculator")
+    window.send_button.click()
+
+    assert sends == ["Open Calculator"]
+    assert window.confirmation_panel.isHidden() is False
+    assert "Calculator" in window.confirmation_label.text()
+    assert window.message_input.isEnabled() is False
+    assert window.send_button.isEnabled() is False
+
+    window.allow_button.click()
+    window.allow_button.click()
+
+    assert approvals == ["ui-call-1"]
+    assert window.confirmation_panel.isHidden() is True
+    assert window.send_button.isEnabled() is True
+    assert "Calculator launch requested." in window.conversation_display.toPlainText()
+
+    window.close()
+
+
+def test_main_window_cancels_pending_action_without_approval(qapplication: QApplication) -> None:
+    cancellations: list[str] = []
+    pending = SimpleNamespace(
+        request_id="ui-call-2",
+        confirmation_message="I can open Calculator. Do you want me to proceed?",
+    )
+
+    def handle_message(text: str) -> ConversationResult:
+        return ConversationResult(pending_tool=pending)
+
+    def cancel(request_id: str) -> ConversationResult:
+        cancellations.append(request_id)
+        return ConversationResult(
+            tool_result=ToolResult.failure(
+                "Tool action cancelled.",
+                error_code="cancelled",
+            )
+        )
+
+    window = MainWindow(
+        message_handler=handle_message,
+        cancellation_handler=cancel,
+    )
+    window.message_input.setText("Open Calculator")
+    window.send_button.click()
+    window.cancel_button.click()
+
+    assert cancellations == ["ui-call-2"]
+    assert window.confirmation_panel.isHidden() is True
+    assert "Tool action cancelled." in window.conversation_display.toPlainText()
 
     window.close()
 

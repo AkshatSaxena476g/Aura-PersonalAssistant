@@ -10,6 +10,7 @@ from .provider import (
     ProviderError,
     ProviderRequestError,
     ProviderResponse,
+    ToolCallRequest,
 )
 from .registry import ProviderRegistry
 
@@ -24,4 +25,5 @@ __all__ = [
     "ProviderRegistry",
     "ProviderRequestError",
     "ProviderResponse",
+    "ToolCallRequest",
 ]

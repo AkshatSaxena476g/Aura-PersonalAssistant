@@ -6,9 +6,13 @@ added later without changing the assistant core.
 
 from __future__ import annotations
 
+from collections.abc import Mapping
 from dataclasses import dataclass
 from enum import StrEnum
-from typing import Protocol, Sequence
+from typing import TYPE_CHECKING, Protocol, Sequence
+
+if TYPE_CHECKING:
+    from app.tools.contracts import ToolDefinition
 
 
 class ProviderError(Exception):
@@ -45,11 +49,43 @@ class ChatMessage:
 
 
 @dataclass(frozen=True, slots=True)
-class ProviderResponse:
-    """Provider-neutral response returned to the assistant core."""
+class ToolCallRequest:
+    """Provider-neutral request for one registered AURA tool."""
 
-    message: ChatMessage
+    name: str
+    arguments: Mapping[str, object]
+    call_id: str | None = None
+
+    def __post_init__(self) -> None:
+        normalized_name = self.name.strip()
+        if not normalized_name:
+            raise ValueError("Tool call name must not be empty")
+        if not isinstance(self.arguments, Mapping):
+            raise ValueError("Tool call arguments must be an object")
+        object.__setattr__(self, "name", normalized_name)
+        object.__setattr__(self, "arguments", dict(self.arguments))
+        if self.call_id is not None:
+            normalized_call_id = self.call_id.strip()
+            object.__setattr__(
+                self,
+                "call_id",
+                normalized_call_id or None,
+            )
+
+
+@dataclass(frozen=True, slots=True)
+class ProviderResponse:
+    """Provider-neutral response containing text or one requested tool call."""
+
+    message: ChatMessage | None = None
+    tool_call: ToolCallRequest | None = None
     finish_reason: str | None = None
+
+    def __post_init__(self) -> None:
+        if (self.message is None) == (self.tool_call is None):
+            raise ValueError(
+                "ProviderResponse must contain exactly one message or tool_call"
+            )
 
 
 class AIProvider(Protocol):
@@ -60,6 +96,11 @@ class AIProvider(Protocol):
         """Return a stable, human-readable provider identifier."""
         ...
 
-    def complete(self, messages: Sequence[ChatMessage]) -> ProviderResponse:
-        """Generate a response for a conversation."""
+    def complete(
+        self,
+        messages: Sequence[ChatMessage],
+        *,
+        tool_definitions: Sequence[ToolDefinition] = (),
+    ) -> ProviderResponse:
+        """Generate a response for a conversation and optional registered tools."""
         ...

@@ -44,7 +44,7 @@ AURA/
 └── .env.example
 ```
 
-The Phase 3 foundation supports text conversation through the configured Gemini provider and includes only safe, read-only demonstration tools. It deliberately contains no computer control, file management, shell execution, web/media control, voice, text-to-speech, wake-word behavior, persistent memory, autonomous actions, or advanced automation.
+The Phase 5 foundation supports normal text conversation and provider-neutral Gemini tool calling. Gemini receives function declarations derived from the active `ToolRegistry`; every call is validated and routed through `ToolExecutionService`. Confirmation-required actions display Allow/Cancel controls and cannot execute before approval. The current registered capabilities remain limited to safe demonstrations and the controlled four-application Windows launcher. File management, shell execution, web/media control, voice, text-to-speech, wake-word behavior, persistent memory, and autonomous actions remain unavailable.
 
 ## Local setup
 
@@ -57,7 +57,7 @@ py -m pip install --upgrade pip
 py -m pip install -e ".[dev]"
 ```
 
-Copy `.env.example` to `.env` and set `GEMINI_API_KEY`, `AURA_AI_PROVIDER=gemini`, and `AURA_AI_MODEL` for Gemini conversation. Application settings use the standard library, and API credentials are never printed or logged.
+Copy `.env.example` to `.env` and set `GEMINI_API_KEY`, `AURA_AI_PROVIDER=gemini`, and `AURA_AI_MODEL` for Gemini conversation and registered tool calling. Application settings use the standard library, and API credentials are never printed or logged.
 
 Run the AURA desktop application with:
 

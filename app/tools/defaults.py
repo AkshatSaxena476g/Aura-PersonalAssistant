@@ -1,4 +1,4 @@
-"""Default Phase 3 tool composition."""
+"""Default registered tools exposed to the application and AI provider."""
 
 from __future__ import annotations
 
@@ -8,7 +8,7 @@ from .registry import ToolRegistry
 
 
 def create_default_tool_registry(*, application_name: str = "AURA") -> ToolRegistry:
-    """Return a registry containing only safe, read-only demonstration tools."""
+    """Return the single source-of-truth registry for currently available tools."""
 
     return ToolRegistry(
         tools=(

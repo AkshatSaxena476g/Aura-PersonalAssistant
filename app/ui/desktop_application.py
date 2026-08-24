@@ -8,8 +8,9 @@ from collections.abc import Sequence
 from PySide6.QtWidgets import QApplication
 
 from app.config import Settings
+from app.core.conversation import ConversationResult
 
-from .main_window import MainWindow, MessageHandler
+from .main_window import ConfirmationHandler, MainWindow, MessageHandler
 
 
 class DesktopApplication:
@@ -20,11 +21,15 @@ class DesktopApplication:
         settings: Settings,
         *,
         message_handler: MessageHandler | None = None,
+        approval_handler: ConfirmationHandler | None = None,
+        cancellation_handler: ConfirmationHandler | None = None,
         startup_message: str | None = None,
         argv: Sequence[str] | None = None,
     ) -> None:
         self.settings = settings
         self.message_handler = message_handler
+        self.approval_handler = approval_handler
+        self.cancellation_handler = cancellation_handler
         self.startup_message = startup_message
         self.argv = list(sys.argv if argv is None else argv)
         self.window: MainWindow | None = None
@@ -43,6 +48,8 @@ class DesktopApplication:
         self.window = MainWindow(
             application_name=self.settings.application_name,
             message_handler=self.message_handler,
+            approval_handler=self.approval_handler,
+            cancellation_handler=self.cancellation_handler,
             startup_message=self.startup_message,
         )
         self.window.show()
@@ -59,4 +66,4 @@ class DesktopApplication:
             self.qt_application.quit()
 
 
-__all__ = ["DesktopApplication"]
+__all__ = ["ConversationResult", "DesktopApplication"]
