@@ -47,3 +47,9 @@
 **Decision:** AI providers translate vendor-specific function-call responses into provider-neutral `ToolCallRequest` values. The assistant core derives exposed definitions from the active `ToolRegistry`, validates and prepares requests through `ToolExecutionService`, and owns confirmation state through `PendingToolRequest` values.
 
 **Reason:** This allows Gemini tool calling to be added without coupling the core or UI to Gemini SDK objects. It also ensures every AI-requested action follows the same registry, validation, permission, confirmation, and structured-result path as direct application requests. Confirmation is handled through `Application` boundaries rather than direct widget-to-tool calls, and request identifiers prevent stale or duplicate approval from executing an action twice.
+
+## D009: Commit Local Tool Outcomes as Completed Conversation Turns
+
+**Decision:** A provider-requested tool turn retains its originating user message while awaiting confirmation. Once approved, cancelled, or completed with a structured failure, the conversation service commits that user message together with the local tool outcome represented as an assistant message. Safe tool calls and validation failures follow the same completed-turn rule.
+
+**Reason:** A tool result is part of the conversation state transition even when no second provider request is made. Recording the completed local outcome prevents the next user message from being sent with a history that silently omits the preceding tool turn. Pending state is cleared before decision handling, so stale or duplicate approvals cannot create another completed turn or execute the action twice.

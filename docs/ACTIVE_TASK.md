@@ -1,22 +1,21 @@
 ## Task
 
-Begin Phase 6: Web, YouTube, and Media.
+Phase 5 post-tool conversation regression fix — complete.
 
-## Objectives
+## Completed
 
-- Add only explicitly scoped web and media capabilities through the existing provider-independent tool system.
-- Derive any provider-facing declarations from the active `ToolRegistry` rather than maintaining provider-specific tool lists.
-- Preserve validation, permission, confirmation, structured results, and safe failure handling.
-- Keep Gemini tool calling, normal text conversation, and the Phase 4 allow-listed application launcher functional.
+The conversation service now commits the original user message and the completed or cancelled tool outcome into provider-neutral conversation history. Pending tool requests retain the originating user message, and approval/cancellation clears the pending state before handling. Stale or duplicate approval attempts remain non-executable.
 
 ## Current Progress
 
-Phase 5 is complete. AURA now translates Gemini function calls into provider-neutral `ToolCallRequest` values, derives Gemini declarations from the active registry, routes requests through `ToolExecutionService`, and manages confirmation-required actions through `Application` and the simple PySide6 Allow/Cancel panel. Sixty-one automated tests pass, the package builds successfully, and the Windows desktop entry point launches successfully.
+The reported sequence was reproduced with focused mock providers: after an approved confirmation-required action, the next unrelated turn was built without the completed tool turn in history. The fix was implemented without keyword-specific branching. Regression coverage now verifies normal follow-up responses, no reuse of prior `ToolResult` values, no accidental `get_application_status` execution, and no stale state after cancellation.
+
+The complete suite passes with 64 tests, and the Windows desktop entry point launches successfully. No real Gemini request or uncontrolled external application action was used for automated validation.
 
 ## Next Action
 
-Design and implement the smallest safe Phase 6 web/media capability on top of the existing tool and provider-neutral boundaries. Keep browser or media operations explicitly scoped and confirmation-aware where appropriate. Do not add unrestricted browser automation, arbitrary URLs, voice features, memory, or autonomous actions.
+Begin Phase 6: Web, YouTube, and Media only after explicit approval to start the next phase. Continue using the existing provider-neutral tool, validation, permission, confirmation, and structured-result boundaries.
 
 ## Completion Criteria
 
-The next task is complete when the selected web/media capability is represented as an explicit registered tool with validated inputs, correct permission behavior, safe structured results, focused mocked tests, and no regression in normal conversation, Gemini tool calling, confirmation flow, or Windows application launching.
+This bug-fix task is complete when the full suite passes, the Windows application launches, the approved and cancelled post-tool sequences are covered by regression tests, and the next unrelated message is processed as a fresh conversation turn. All criteria are satisfied.

@@ -50,6 +50,7 @@ class PendingToolRequest:
     """A specific validated request awaiting one user decision."""
 
     request_id: str
+    user_message: ChatMessage
     call: PreparedToolCall
     confirmation_message: str
 
@@ -159,6 +160,7 @@ class ConversationService:
         self._completed_request_ids.add(request_id)
         assert self.tool_service is not None
         result = self.tool_service.execute_prepared(pending.call, confirmed=True)
+        self._commit_tool_result(pending.user_message, result)
         return ConversationResult(tool_result=result)
 
     def cancel_pending(self, request_id: str) -> ConversationResult:
@@ -175,12 +177,12 @@ class ConversationService:
 
         self._pending_tool = None
         self._completed_request_ids.add(request_id)
-        return ConversationResult(
-            tool_result=ToolResult.failure(
-                "Tool action cancelled.",
-                error_code="cancelled",
-            )
+        result = ToolResult.failure(
+            "Tool action cancelled.",
+            error_code="cancelled",
         )
+        self._commit_tool_result(pending.user_message, result)
+        return ConversationResult(tool_result=result)
 
     def _prepare_tool_call(
         self,
@@ -198,6 +200,7 @@ class ConversationService:
         preparation = self.tool_service.prepare(request.name, request.arguments)
         if not preparation.ready:
             assert preparation.failure is not None
+            self._commit_tool_result(user_message, preparation.failure)
             return ConversationResult(
                 user_message=user_message,
                 tool_result=preparation.failure,
@@ -209,6 +212,7 @@ class ConversationService:
                 preparation.prepared,
                 confirmed=True,
             )
+            self._commit_tool_result(user_message, result)
             return ConversationResult(
                 user_message=user_message,
                 tool_result=result,
@@ -226,6 +230,7 @@ class ConversationService:
 
         pending = PendingToolRequest(
             request_id=request_id,
+            user_message=user_message,
             call=preparation.prepared,
             confirmation_message=self._confirmation_message(preparation.prepared),
         )
@@ -234,6 +239,16 @@ class ConversationService:
             user_message=user_message,
             pending_tool=pending,
         )
+
+    def _commit_tool_result(
+        self,
+        user_message: ChatMessage,
+        result: ToolResult,
+    ) -> None:
+        """Record a local tool outcome as the assistant side of the completed turn."""
+
+        assistant_message = ChatMessage(MessageRole.ASSISTANT, result.message)
+        self._history.extend((user_message, assistant_message))
 
     @staticmethod
     def _confirmation_message(prepared: PreparedToolCall) -> str:
