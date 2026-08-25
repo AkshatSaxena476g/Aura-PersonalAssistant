@@ -74,6 +74,12 @@ The `ConversationService` owns pending confirmation state and request identifier
 
 Conversation requests that may involve network/provider latency are submitted by the desktop composition layer to a managed `QThread` worker. The worker invokes the existing application callback and emits a structured result through a Qt signal. Only the main Qt thread updates widgets, confirmation controls, status text, or conversation display state. The worker owns one request at a time and releases its thread after completion.
 
+## Controlled Phase 6A Browser Boundary
+
+Phase 6A browser capabilities are explicit tools rather than generic browser automation. `search_web` and `search_youtube` accept only a bounded validated query and construct their fixed search endpoints internally. `open_youtube` accepts no arguments and uses only the fixed official YouTube homepage. All three tools use the default browser through Python's browser-opening mechanism, require `ToolPermission.CONFIRMATION_REQUIRED`, and return through the existing structured tool-result path.
+
+Raw URLs, arbitrary browser arguments, executable destinations, shell commands, and a generic `open_url` tool are intentionally outside the architecture. The tool layer owns URL construction and the core owns validation, pending confirmation, approval, cancellation, and stale-request protection.
+
 ## Proposed Application Layout
 
 ```text

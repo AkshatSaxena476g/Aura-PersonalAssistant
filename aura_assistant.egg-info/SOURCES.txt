@@ -19,6 +19,7 @@ app/tools/contracts.py
 app/tools/defaults.py
 app/tools/demo.py
 app/tools/registry.py
+app/tools/web.py
 app/tools/windows_applications.py
 app/ui/__init__.py
 app/ui/conversation_worker.py
@@ -43,4 +44,5 @@ tests/test_settings.py
 tests/test_tool_calling.py
 tests/test_tools.py
 tests/test_ui.py
+tests/test_web_tools.py
 tests/test_windows_applications.py

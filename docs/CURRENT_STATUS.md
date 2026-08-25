@@ -1,46 +1,43 @@
 ## Current Phase
 
-Phase 5: AI Tool Calling Integration — complete. Phase 6 has not started. The post-worker Gemini failure has now been independently reproduced and traced end to end.
+Phase 6A: Controlled Web and YouTube Capabilities — complete. Phase 6B: Basic Media Controls has not started.
 
-## Exact Investigation Result
+## Completed Implementation
 
-The current local configuration initialized successfully through `Settings.from_environment()` and `create_configured_provider()`. No credential or complete environment value was printed, logged, modified, or regenerated.
+AURA now provides three provider-neutral, confirmation-required browser tools through the existing `ToolRegistry` and `ToolExecutionService`:
 
-A fresh redacted diagnostic executed one minimal `Hello` request directly through `GeminiProvider.complete(...)` outside the UI worker and one `Hello` request through the exact desktop path: `ConversationRunner` → `Application.send_message` → `ConversationService` → `GeminiProvider.complete` → `self._client.models.generate_content`.
+- `search_web` validates one bounded non-empty query, constructs a Google search URL internally, URL-encodes the query, and opens it through Python's default browser mechanism.
+- `open_youtube` accepts no arguments and opens only the fixed official YouTube homepage defined inside the application.
+- `search_youtube` validates one bounded non-empty query, constructs a YouTube search URL internally, URL-encodes the query, and opens it through Python's default browser mechanism.
 
-Both calls reached the Google GenAI SDK and failed at the provider's `generate_content` call with `google.genai.errors.ClientError`, HTTP `429`, status `RESOURCE_EXHAUSTED`. The API response identified the exhausted free-tier `generate_content` request quota for the configured model. The direct request and worker request returned the same service-level failure, with only the retry-after interval differing by the time between calls.
+All three tools reject undeclared arguments, reject raw URLs, require explicit confirmation, and return structured safe failures for invalid input, unsupported platforms, and browser-opening failures. The maximum search-query length is 200 characters. There is no generic `open_url` tool, unrestricted browser automation, shell invocation, command argument handling, or user/provider-controlled executable destination.
 
-The SDK also emitted an advisory warning that direct `Models.generate_content` use is not the recommended automatic-function-calling entry point. That warning is not the failure: the request proceeded to the API, which returned the confirmed HTTP 429 quota response.
+The tools are implemented in `app/tools/web.py`, registered by `app/tools/defaults.py`, and exported by `app/tools/__init__.py`. Gemini discovers their declarations automatically from the active registry through the existing provider-neutral function-calling path. No Gemini-specific behavior was added to the tools.
 
-## Root Cause and Worker Assessment
+## Confirmation and Safety Flow
 
-The root cause is an external Gemini API account/model quota exhaustion, not a Qt thread-affinity failure, worker argument change, provider construction failure, malformed AURA request, or corrupted conversation state. The managed worker update changed where the blocking call runs and how the resulting error is delivered to the UI, but it did not change the configured provider, model, request payload, or SDK call. The worker therefore made the existing quota failure visible asynchronously; it did not cause it.
+The existing flow remains unchanged: Gemini produces a neutral `ToolCallRequest`; `ConversationService` sends it to `ToolExecutionService.prepare()`; validation and permission inspection create a `PendingToolRequest`; the existing AURA Allow/Cancel UI handles the decision; and only an approved request reaches `execute_prepared()`. Cancellation and stale or duplicate approval cannot open a browser. Automated browser calls and external Windows launches are mocked.
 
-The application continues to construct the configured provider, `Application`, and `ConversationService` once at startup. `ConversationRunner` invokes the existing bound `Application.send_message` callback on its worker thread, while Qt signals return structured results to the main thread. The UI remains responsible only for rendering, confirmation controls, and state restoration. No provider-per-thread reconstruction or cross-thread core-state move was introduced.
+## Gemini Context
 
-## Code Changes
-
-`app/ai/gemini_provider.py` retains bounded internal logging of the exception type and redacted detail. It now recognizes SDK/API errors with `code == 429` or `status == RESOURCE_EXHAUSTED` and returns a safe, explicit `ProviderRequestError` explaining that the configured model's request quota is exhausted. Other failures retain the existing generic network/API configuration message. The API key and environment contents remain protected.
-
-`tests/test_gemini_provider.py` now covers the quota-specific classification and confirms that internal exception detail is not surfaced to the user. Existing provider-neutral conversation, tool registry, validation, confirmation, post-tool history, worker, and dark-theme behavior remains unchanged.
+The earlier Gemini investigation remains valid. Direct and worker requests reached the Google GenAI SDK and failed with HTTP `429 RESOURCE_EXHAUSTED` because of external free-tier quota exhaustion. Phase 6A therefore validates Gemini declarations and tool-call translation with mocked provider responses without changing the provider architecture or API configuration. The managed QThread, responsive dark UI, provider abstraction, conversation state, tool validation, existing launcher, and post-tool history behavior remain intact.
 
 ## Validation
 
-- Focused Gemini provider and worker tests: **13 passed**.
-- Complete automated suite: **71 passed**.
-- Direct live request using the existing local configuration: reached the SDK and failed with `ClientError`, HTTP `429 RESOURCE_EXHAUSTED`.
-- Managed worker live request using the same application path: reached the SDK and failed with the same `429 RESOURCE_EXHAUSTED` response.
+- New Phase 6A browser-tool tests: **17 passed**.
+- Complete automated suite: **88 passed**.
+- Coverage includes query trimming, URL encoding, empty/type/length validation, extra-argument rejection, fixed YouTube destination, browser failure handling, unsupported platform handling, confirmation gating, Allow exactly once, Cancel, stale approval, default-registry membership, and registry-derived Gemini declarations.
 - Package wheel build: **successful**.
-- Windows desktop smoke launch with `python.exe main.py`: **successful**; observed title was `AURA | Personal Desktop Assistant - AURA` and the process remained alive until clean test shutdown.
-- Live normal conversation, sequential live messages, arithmetic, and live Calculator Allow/Cancel could not be completed because the external Gemini quota rejected the initial model requests. The corresponding conversation, tool-call, confirmation, cancellation, responsiveness, and state-restoration behavior remains covered by automated tests with mocked provider responses and mocked external launches.
-- No API key, secret, or complete `.env` value was exposed, modified, or regenerated.
+- Windows desktop smoke launch with `python.exe main.py`: **successful**; observed title was `AURA | Personal Desktop Assistant - AURA` and the process remained alive until test shutdown.
+- Static security scan found no shell execution, `shell=True`, command interpreter, arbitrary `open_url`, or browser-argument implementation in `app/tools/web.py`.
+- No real browser launch was performed by automated tests. No API key or complete `.env` value was exposed, modified, regenerated, or committed.
 
 ## Current State and Next Task
 
-AURA's responsive dark UI, provider abstraction, conversation core, centralized tool validation/execution, confirmation-required Windows launcher, and managed background request execution are preserved. Live Gemini use will resume only when the configured Gemini quota becomes available or the account/model quota is changed outside this codebase.
+AURA's controlled web and YouTube discovery capabilities are complete and integrated into the existing modular architecture. The implementation is restricted to internally generated Google and YouTube destinations and requires confirmation before opening the default browser.
 
-Phase 6: Web, YouTube, and Media remains the next planned project phase, but it has not been started and must not be started as part of this debugging task.
+Phase 6B: Basic Media Controls is the recommended next task, but it must not be started automatically.
 
 ## Last Updated
 
-2026-08-24 — Fresh direct-versus-worker reproduction confirmed HTTP 429 `RESOURCE_EXHAUSTED`; provider now surfaces a safe quota-specific error; 71 tests pass.
+2026-08-25 — Phase 6A completed; controlled web/YouTube tools integrated; 88 tests pass; Phase 6B remains deferred.

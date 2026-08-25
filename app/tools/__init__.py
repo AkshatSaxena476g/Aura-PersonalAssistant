@@ -10,6 +10,7 @@ from .contracts import (
 from .defaults import create_default_tool_registry
 from .registry import ToolRegistry
 from .windows_applications import LaunchApplicationTool
+from .web import OpenYoutubeTool, SearchWebTool, SearchYoutubeTool
 
 __all__ = [
     "Tool",
@@ -19,5 +20,8 @@ __all__ = [
     "ToolResult",
     "ToolValidationError",
     "LaunchApplicationTool",
+    "OpenYoutubeTool",
+    "SearchWebTool",
+    "SearchYoutubeTool",
     "create_default_tool_registry",
 ]

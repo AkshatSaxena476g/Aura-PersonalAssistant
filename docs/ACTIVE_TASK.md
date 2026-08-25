@@ -1,25 +1,33 @@
 ## Task
 
-Diagnose and safely handle the Gemini request failure observed after the managed background-worker and dark-theme update — complete. Do not begin Phase 6.
+Implement Phase 6A controlled Web and YouTube capabilities using AURA's existing provider-neutral tool architecture — complete. Do not start Phase 6B automatically.
 
-## Exact Root Cause
+## Completed Tools
 
-The configured provider initialized successfully. A fresh redacted comparison issued one minimal request directly through `GeminiProvider.complete(...)` and one through the exact desktop path `ConversationRunner` → `Application.send_message` → `ConversationService` → `GeminiProvider` → Google GenAI SDK. Both reached `self._client.models.generate_content` and raised `google.genai.errors.ClientError` with HTTP `429 RESOURCE_EXHAUSTED`.
+The default registry now includes three confirmation-required tools:
 
-The API detail identified exhausted free-tier `generate_content` request quota for the configured model. This is an external Gemini account/model quota condition. It is not a Qt cross-thread failure, altered worker argument, provider initialization error, malformed AURA request, or conversation-state regression. The worker update only moved the blocking call off the UI thread and delivered its result asynchronously; it did not change the provider request or cause the API rejection.
+- `search_web` accepts only a validated, trimmed query of at most 200 characters and internally constructs a URL for Google web search.
+- `open_youtube` accepts no arguments and internally opens only the fixed official YouTube homepage.
+- `search_youtube` accepts only a validated, trimmed query of at most 200 characters and internally constructs a YouTube search URL.
 
-## Completed Changes
+All query values are URL-encoded. Extra arguments, empty or invalid queries, raw URLs, arbitrary browser arguments, and arbitrary executable destinations are rejected. Browser opening uses Python's default-browser mechanism and never invokes a shell. All three tools report structured safe failures and require the existing confirmation flow.
 
-`GeminiProvider` continues to log only the exception type and bounded detail with the configured credential redacted. It now detects an explicit SDK/API HTTP 429 or `RESOURCE_EXHAUSTED` status and returns a safe quota-specific `ProviderRequestError`. Non-quota failures retain the generic network/API configuration message. No API key or `.env` value was printed, changed, regenerated, or committed.
+## Architecture Integration
 
-The existing composition remains intact: one configured provider, one `Application`/`ConversationService`, and one managed `ConversationRunner` request thread at a time. Provider calls remain off the Qt UI thread, and only structured results cross back to the main thread. Tool validation, controlled execution, confirmation-required launcher behavior, Allow/Cancel handling, post-tool history commits, dark theme, and UI restoration were not bypassed or rewritten.
+The implementation is in `app/tools/web.py`. `app/tools/defaults.py` registers the tools, and `app/tools/__init__.py` exports them. Gemini receives their declarations automatically from the active registry through the existing provider-neutral adapter. The UI and core were not given browser-specific logic.
+
+The existing path remains: provider-neutral `ToolCallRequest` → `ToolExecutionService.prepare()` → strict validation and permission inspection → `PendingToolRequest` → existing Allow/Cancel UI → `execute_prepared()` only after approval. Cancellation, stale approval, and duplicate approval cannot open the browser. No parallel confirmation system or generic URL tool was introduced.
 
 ## Validation
 
-Focused provider and worker tests pass with **13 tests**. The complete suite passes with **71 tests**. The package wheel builds successfully. A Windows launch using `python.exe main.py` showed `AURA | Personal Desktop Assistant - AURA` and remained running until clean smoke-test shutdown.
+The focused Phase 6A suite passes with **17 tests**. The complete suite passes with **88 tests**. Tests cover all three tools, URL encoding, validation boundaries, extra-argument rejection, fixed YouTube destination, mocked browser success/failure, unsupported platform behavior, registry membership, Gemini declaration derivation, confirmation-required behavior, Cancel, Allow exactly once, and stale approval. Existing launcher, conversation, provider, worker, dark-theme, and post-tool regression coverage remains passing.
 
-The fresh direct live request and the fresh worker-path live request both reached Gemini and returned the same redacted HTTP 429 quota response. Live normal conversation, sequential messages, arithmetic, and live Calculator Allow/Cancel could not be exercised against Gemini because the service rejected the initial request. Mocked automated coverage continues to verify the normal conversation, tool-call, confirmation, cancellation, responsiveness, state-restoration, and mocked external-launch behavior.
+The package wheel built successfully. Windows `python.exe main.py` launched successfully with the title `AURA | Personal Desktop Assistant - AURA` and remained running until clean smoke-test shutdown. Automated tests performed no real browser launches. The static security scan found no shell execution, arbitrary URL tool, or browser-argument path. No API key or `.env` value was exposed, modified, regenerated, or committed.
+
+## Gemini Availability Note
+
+Live Gemini requests remain subject to the previously confirmed external HTTP 429 `RESOURCE_EXHAUSTED` free-tier quota condition. Phase 6A's Gemini declaration and tool-call tests therefore use mocked provider responses and do not alter the provider architecture or API configuration.
 
 ## Next Action
 
-Keep Phase 6 deferred. When the external Gemini quota becomes available, manually rerun a normal conversation, sequential messages, arithmetic, and the Calculator Allow and Cancel flows. No code change can restore an exhausted external quota; the current implementation now reports that condition explicitly and safely.
+Do not begin Phase 6B automatically. The recommended next task is Phase 6B: Basic Media Controls.

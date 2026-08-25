@@ -184,6 +184,9 @@ def test_default_registry_contains_safe_demos_and_controlled_launcher() -> None:
         "get_application_status",
         "get_local_datetime",
         "launch_application",
+        "open_youtube",
+        "search_web",
+        "search_youtube",
     )
     definitions = {
         definition.name: definition for definition in registry.definitions()
@@ -194,6 +197,9 @@ def test_default_registry_contains_safe_demos_and_controlled_launcher() -> None:
         definitions["launch_application"].permission
         is ToolPermission.CONFIRMATION_REQUIRED
     )
+    assert definitions["open_youtube"].permission is ToolPermission.CONFIRMATION_REQUIRED
+    assert definitions["search_web"].permission is ToolPermission.CONFIRMATION_REQUIRED
+    assert definitions["search_youtube"].permission is ToolPermission.CONFIRMATION_REQUIRED
 
 
 def test_local_datetime_demo_is_deterministic_when_clock_is_injected() -> None:

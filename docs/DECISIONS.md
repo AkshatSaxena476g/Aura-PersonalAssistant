@@ -71,3 +71,9 @@
 **Decision:** The configured `GeminiProvider`, `Application`, and `ConversationService` remain composed once at startup and are invoked through the existing managed Qt worker. Provider failures are diagnosed with redacted exception-type/detail logging and cross-thread tests before introducing provider-per-thread reconstruction or moving core state across threads.
 
 **Reason:** The direct and worker-backed requests reproduced the same HTTP 429 quota failure, so recreating the provider or moving conversation state would not address the actual cause and could introduce new history or confirmation races. The UI remains responsive without weakening the provider-neutral architecture.
+
+## D013: Restrict Phase 6A Browser Destinations
+
+**Decision:** Implement web and YouTube browser actions as three explicit tools—`search_web`, `open_youtube`, and `search_youtube`—with internally generated fixed destinations. Search tools accept only bounded validated queries; YouTube homepage opening accepts no arguments. Every browser-opening tool requires confirmation and uses the default browser without shell execution.
+
+**Reason:** This provides useful web discovery while keeping the execution boundary narrow. It prevents Gemini or user input from supplying arbitrary URLs, executable paths, browser arguments, or shell commands, and reuses the established registry, validation, structured-result, and Allow/Cancel architecture instead of introducing generic browser automation.
