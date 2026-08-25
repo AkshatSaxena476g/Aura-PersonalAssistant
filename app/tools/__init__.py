@@ -11,6 +11,15 @@ from .defaults import create_default_tool_registry
 from .registry import ToolRegistry
 from .windows_applications import LaunchApplicationTool
 from .web import OpenYoutubeTool, SearchWebTool, SearchYoutubeTool
+from .media import MediaNextTool, MediaPlayPauseTool, MediaPreviousTool
+from .audio import (
+    GetVolumeTool,
+    MuteTool,
+    SetVolumeTool,
+    UnmuteTool,
+    VolumeDownTool,
+    VolumeUpTool,
+)
 
 __all__ = [
     "Tool",
@@ -23,5 +32,14 @@ __all__ = [
     "OpenYoutubeTool",
     "SearchWebTool",
     "SearchYoutubeTool",
+    "MediaNextTool",
+    "MediaPlayPauseTool",
+    "MediaPreviousTool",
+    "GetVolumeTool",
+    "SetVolumeTool",
+    "VolumeUpTool",
+    "VolumeDownTool",
+    "MuteTool",
+    "UnmuteTool",
     "create_default_tool_registry",
 ]

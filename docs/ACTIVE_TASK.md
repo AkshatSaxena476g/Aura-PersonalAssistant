@@ -1,33 +1,31 @@
 ## Task
 
-Implement Phase 6A controlled Web and YouTube capabilities using AURA's existing provider-neutral tool architecture — complete. Do not start Phase 6B automatically.
+Implement Phase 6B bounded global media playback and Windows system-volume controls through AURA's existing tool architecture — complete. Do not start Phase 7 automatically.
 
-## Completed Tools
+## Implemented Tools
 
-The default registry now includes three confirmation-required tools:
+The default registry now includes nine explicit `ToolPermission.SAFE` tools: `media_play_pause`, `media_next`, `media_previous`, `get_volume`, `set_volume`, `volume_up`, `volume_down`, `mute`, and `unmute`.
 
-- `search_web` accepts only a validated, trimmed query of at most 200 characters and internally constructs a URL for Google web search.
-- `open_youtube` accepts no arguments and internally opens only the fixed official YouTube homepage.
-- `search_youtube` accepts only a validated, trimmed query of at most 200 characters and internally constructs a YouTube search URL.
+Media tools accept no arguments and use fixed Windows virtual keys through `ctypes` and User32 `SendInput`. Volume tools use the default Windows output endpoint through the pinned `pycaw==20240210` dependency. `get_volume` returns normalized 0–100 data; `set_volume` accepts only whole percentages from 0 through 100; relative adjustments default to 10 percentage points and are bounded to 1–50; results clamp at 0 and 100; mute and unmute explicitly set their respective states.
 
-All query values are URL-encoded. Extra arguments, empty or invalid queries, raw URLs, arbitrary browser arguments, and arbitrary executable destinations are rejected. Browser opening uses Python's default-browser mechanism and never invokes a shell. All three tools report structured safe failures and require the existing confirmation flow.
+All platform details remain inside `app/tools/media.py` and `app/tools/audio.py`. The tools return structured failures for invalid arguments, unsupported platforms, unavailable audio interfaces, media-command failures, and audio-control failures. No arbitrary key injection, shell command, subprocess, application-specific player integration, or generic audio-control tool was added.
 
-## Architecture Integration
+## Important Fixes During Validation
 
-The implementation is in `app/tools/web.py`. `app/tools/defaults.py` registers the tools, and `app/tools/__init__.py` exports them. Gemini receives their declarations automatically from the active registry through the existing provider-neutral adapter. The UI and core were not given browser-specific logic.
+Real Windows validation exposed two defects that were fixed before completion. The installed pycaw release returned a COM pointer instead of the newer wrapper shape, so AURA now adapts both forms through a normalized endpoint-volume adapter. The initial `ctypes` `INPUT` union was undersized because its native mouse and hardware members were omitted; User32 consequently returned zero with Windows error 87. The complete native union is now represented and the fixed media-key path passes real Windows validation.
 
-The existing path remains: provider-neutral `ToolCallRequest` → `ToolExecutionService.prepare()` → strict validation and permission inspection → `PendingToolRequest` → existing Allow/Cancel UI → `execute_prepared()` only after approval. Cancellation, stale approval, and duplicate approval cannot open the browser. No parallel confirmation system or generic URL tool was introduced.
+Because SAFE tools execute in the managed conversation worker, the default pycaw backend explicitly balances COM initialization and uninitialization around each worker-thread audio operation. UI, provider, core conversation, tool-confirmation, and background-worker architecture remains unchanged.
 
 ## Validation
 
-The focused Phase 6A suite passes with **17 tests**. The complete suite passes with **88 tests**. Tests cover all three tools, URL encoding, validation boundaries, extra-argument rejection, fixed YouTube destination, mocked browser success/failure, unsupported platform behavior, registry membership, Gemini declaration derivation, confirmation-required behavior, Cancel, Allow exactly once, and stale approval. Existing launcher, conversation, provider, worker, dark-theme, and post-tool regression coverage remains passing.
+The complete automated suite passes with **113 tests**. New mocked coverage verifies every Phase 6B action, fixed virtual-key values, native `INPUT` sizing, no-argument enforcement, validation of 0/50/100 and invalid volume values, bounded relative adjustments, clamping, explicit mute/unmute, adapter normalization, platform failures, API failures, registry membership, and registry-derived Gemini declarations. Existing Phase 4 and Phase 6A behavior and all conversation/worker/dark-theme regressions remain passing.
 
-The package wheel built successfully. Windows `python.exe main.py` launched successfully with the title `AURA | Personal Desktop Assistant - AURA` and remained running until clean smoke-test shutdown. Automated tests performed no real browser launches. The static security scan found no shell execution, arbitrary URL tool, or browser-argument path. No API key or `.env` value was exposed, modified, regenerated, or committed.
+`pip check` reports no broken requirements, and the package wheel builds successfully. Windows `python.exe main.py` launches with `AURA | Personal Desktop Assistant - AURA` and remains alive until clean smoke-test shutdown.
 
-## Gemini Availability Note
+Real Windows smoke tests succeeded for `get_volume`, `set_volume`, default and explicit `volume_up`, explicit `volume_down`, `mute`, `unmute`, `media_play_pause`, `media_next`, and `media_previous`. The audio state was restored to the original observed volume of 100 and unmuted state. Automated tests never alter the real system or send real media commands.
 
-Live Gemini requests remain subject to the previously confirmed external HTTP 429 `RESOURCE_EXHAUSTED` free-tier quota condition. Phase 6A's Gemini declaration and tool-call tests therefore use mocked provider responses and do not alter the provider architecture or API configuration.
+No API key or `.env` value was exposed, modified, regenerated, printed, or committed. Temporary diagnostics and validation scripts were removed.
 
 ## Next Action
 
-Do not begin Phase 6B automatically. The recommended next task is Phase 6B: Basic Media Controls.
+Do not begin Phase 7 automatically. The recommended next task is Phase 7: File and Folder Management.

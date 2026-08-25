@@ -77,3 +77,9 @@
 **Decision:** Implement web and YouTube browser actions as three explicit tools—`search_web`, `open_youtube`, and `search_youtube`—with internally generated fixed destinations. Search tools accept only bounded validated queries; YouTube homepage opening accepts no arguments. Every browser-opening tool requires confirmation and uses the default browser without shell execution.
 
 **Reason:** This provides useful web discovery while keeping the execution boundary narrow. It prevents Gemini or user input from supplying arbitrary URLs, executable paths, browser arguments, or shell commands, and reuses the established registry, validation, structured-result, and Allow/Cancel architecture instead of introducing generic browser automation.
+
+## D014: Use Explicit Windows Media and Audio Adapters
+
+**Decision:** Implement `media_play_pause`, `media_next`, and `media_previous` with fixed Windows media virtual keys sent through a correctly sized `ctypes` User32 `SendInput` structure. Implement volume and mute controls through a pinned pycaw adapter over the default Windows Core Audio endpoint. Keep platform imports and native calls isolated in `app/tools/media.py` and `app/tools/audio.py`.
+
+**Reason:** The standard library is sufficient for fixed media-key injection, while system endpoint volume and mute require a maintained Core Audio wrapper. The explicit adapters avoid unrestricted keyboard, shell, subprocess, or player-specific commands. The pycaw backend is lazy and balances COM initialization per operation because SAFE tools execute in the managed conversation worker thread. Unsupported platforms, unavailable audio interfaces, partial native input, and API failures are converted into structured safe tool results.

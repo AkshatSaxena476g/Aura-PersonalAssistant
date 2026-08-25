@@ -18,11 +18,11 @@ Before contributing to the project, read the documents in this order:
 6. `docs/ARCHITECTURE.md`
 7. `docs/DECISIONS.md`
 
-The current implementation target is recorded in `docs/ACTIVE_TASK.md`. Phase 6A controlled Web and YouTube capabilities are complete; Phase 6B Basic Media Controls has not started.
+The current implementation target is recorded in `docs/ACTIVE_TASK.md`. Phase 6A controlled Web and YouTube capabilities and Phase 6B Basic Media Controls are complete; Phase 7 File and Folder Management has not started.
 
 ## Initial technology direction
 
-AURA is a Windows-first Python desktop application. The technology direction includes PySide6 for the desktop UI, the official `google-genai` SDK behind a swappable AI provider layer, SQLite for persistence, replaceable speech and wake-word providers, Playwright for supported web interaction, pytest for testing, Python logging, and PyInstaller for later packaging. The current Phase 6A implementation supports text conversation and controlled Web and YouTube discovery through Gemini tool calling; Phase 6B media controls have not started.
+AURA is a Windows-first Python desktop application. The technology direction includes PySide6 for the desktop UI, the official `google-genai` SDK behind a swappable AI provider layer, pycaw for Windows Core Audio, SQLite for persistence, replaceable speech and wake-word providers, Playwright for supported web interaction, pytest for testing, Python logging, and PyInstaller for later packaging. The current Phase 6B implementation supports text conversation, controlled Web and YouTube discovery, bounded global media playback, and Windows system-volume controls through Gemini tool calling; Phase 7 file management has not started.
 
 ## Repository layout
 
@@ -44,7 +44,7 @@ AURA/
 └── .env.example
 ```
 
-The Phase 6A foundation supports normal text conversation, provider-neutral Gemini tool calling, and controlled Web and YouTube discovery. Gemini receives function declarations derived from the active `ToolRegistry`; every call is validated and routed through `ToolExecutionService`. Confirmation-required actions display Allow/Cancel controls and cannot execute before approval. Conversation requests run through a managed Qt worker so the desktop remains responsive while waiting for the provider. The UI uses a restrained dark theme defined centrally in `app/ui/theme.py`. Browser actions are limited to internally generated Google and YouTube search destinations plus the fixed official YouTube homepage; arbitrary URLs, browser automation, shell execution, and executable browser arguments remain unsupported. File management, media controls, voice, text-to-speech, wake-word behavior, persistent memory, and autonomous actions remain unavailable.
+The Phase 6B foundation supports normal text conversation, provider-neutral Gemini tool calling, controlled Web and YouTube discovery, bounded global media playback, and Windows system-volume controls. Gemini receives function declarations derived from the active `ToolRegistry`; every call is validated and routed through `ToolExecutionService`. Confirmation-required actions display Allow/Cancel controls and cannot execute before approval. Conversation requests run through a managed Qt worker so the desktop remains responsive while waiting for the provider. The UI uses a restrained dark theme defined centrally in `app/ui/theme.py`. Browser actions remain limited to internally generated destinations, while media and audio actions use only explicit fixed controls; arbitrary URLs, browser automation, shell execution, arbitrary keyboard injection, and executable browser arguments remain unsupported. File management, voice, text-to-speech, wake-word behavior, persistent memory, and autonomous actions remain unavailable.
 
 ## Local setup
 

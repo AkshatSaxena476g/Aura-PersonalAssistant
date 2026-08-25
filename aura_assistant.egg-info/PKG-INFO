@@ -5,5 +5,6 @@ Summary: AURA personal AI-powered desktop assistant
 Requires-Python: >=3.11
 Requires-Dist: PySide6<7,>=6.7
 Requires-Dist: google-genai<3,>=1.0
+Requires-Dist: pycaw==20240210
 Provides-Extra: dev
 Requires-Dist: pytest>=8.0; extra == "dev"

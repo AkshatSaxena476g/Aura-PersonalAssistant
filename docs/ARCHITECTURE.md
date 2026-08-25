@@ -80,6 +80,14 @@ Phase 6A browser capabilities are explicit tools rather than generic browser aut
 
 Raw URLs, arbitrary browser arguments, executable destinations, shell commands, and a generic `open_url` tool are intentionally outside the architecture. The tool layer owns URL construction and the core owns validation, pending confirmation, approval, cancellation, and stale-request protection.
 
+## Controlled Phase 6B Media and Audio Boundary
+
+Phase 6B exposes explicit SAFE tools for three global media actions and six default-output volume actions. Media actions use fixed Windows virtual-key constants through a `ctypes` User32 `SendInput` adapter; no generic key or command input is accepted. Volume and mute actions use a lazy pycaw adapter over the Windows Core Audio endpoint interface and return normalized volume data from 0 to 100.
+
+The platform adapters live in `app/tools/media.py` and `app/tools/audio.py`. They remain behind the existing `Tool` contract and `ToolExecutionService`; the UI, `Application`, `ConversationService`, and `GeminiProvider` do not contain media/audio logic. SAFE actions are still registry-discovered and validated before execution. Unsupported platforms and native API failures become structured tool failures without raw system details.
+
+Because provider requests and SAFE tool calls run through the managed worker, the default pycaw backend balances COM initialization and uninitialization around each audio operation. This keeps COM state local to the thread performing the Core Audio call while leaving the UI event loop responsive.
+
 ## Proposed Application Layout
 
 ```text

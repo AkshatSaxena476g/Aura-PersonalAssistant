@@ -21,11 +21,12 @@ Provider-neutral tool-call representation, provider-derived tool declarations, G
 ## Phase 6A: Controlled Web and YouTube Capabilities — complete
 Restricted `search_web`, `open_youtube`, and `search_youtube` tools using fixed internally generated destinations, strict validation, default-browser opening, and the existing confirmation flow. Arbitrary URLs, browser automation, shell commands, and executable browser arguments are intentionally unsupported.
 
-## Phase 6B: Basic Media Controls
-Supported media control through validated tools. This phase has not started.
+## Phase 6B: Basic Media Controls — complete
+Bounded global media playback and Windows system-volume controls through explicit SAFE tools, with mocked platform tests, lazy platform integration, and no arbitrary audio commands.
 
 ## Phase 7: File and Folder Management
-Search, create, move, copy, rename, and safely delete files and folders through validated and confirmation-aware tools.
+Search, create, move, copy, rename, and safely delete files and folders through validated and confirmation-aware tools. This phase has not started.
+
 
 ## Phase 8: Voice Interaction
 Microphone input, speech-to-text, text-to-speech, and push-to-talk.

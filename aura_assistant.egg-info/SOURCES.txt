@@ -15,9 +15,11 @@ app/core/conversation.py
 app/core/tool_execution.py
 app/data/__init__.py
 app/tools/__init__.py
+app/tools/audio.py
 app/tools/contracts.py
 app/tools/defaults.py
 app/tools/demo.py
+app/tools/media.py
 app/tools/registry.py
 app/tools/web.py
 app/tools/windows_applications.py
@@ -36,9 +38,11 @@ aura_assistant.egg-info/top_level.txt
 tests/test_ai_factory.py
 tests/test_ai_provider.py
 tests/test_application.py
+tests/test_audio.py
 tests/test_conversation.py
 tests/test_conversation_worker.py
 tests/test_gemini_provider.py
+tests/test_media.py
 tests/test_post_tool_regression.py
 tests/test_settings.py
 tests/test_tool_calling.py

@@ -183,10 +183,19 @@ def test_default_registry_contains_safe_demos_and_controlled_launcher() -> None:
     assert registry.names == (
         "get_application_status",
         "get_local_datetime",
+        "get_volume",
         "launch_application",
+        "media_next",
+        "media_play_pause",
+        "media_previous",
+        "mute",
         "open_youtube",
         "search_web",
         "search_youtube",
+        "set_volume",
+        "unmute",
+        "volume_down",
+        "volume_up",
     )
     definitions = {
         definition.name: definition for definition in registry.definitions()
@@ -200,6 +209,18 @@ def test_default_registry_contains_safe_demos_and_controlled_launcher() -> None:
     assert definitions["open_youtube"].permission is ToolPermission.CONFIRMATION_REQUIRED
     assert definitions["search_web"].permission is ToolPermission.CONFIRMATION_REQUIRED
     assert definitions["search_youtube"].permission is ToolPermission.CONFIRMATION_REQUIRED
+    for name in (
+        "get_volume",
+        "media_next",
+        "media_play_pause",
+        "media_previous",
+        "mute",
+        "set_volume",
+        "unmute",
+        "volume_down",
+        "volume_up",
+    ):
+        assert definitions[name].permission is ToolPermission.SAFE
 
 
 def test_local_datetime_demo_is_deterministic_when_clock_is_injected() -> None:
