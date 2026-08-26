@@ -25,3 +25,5 @@ dist/
 # Local data
 data/*.db
 data/*.sqlite
+
+*.egg-info/
