@@ -88,6 +88,14 @@ The platform adapters live in `app/tools/media.py` and `app/tools/audio.py`. The
 
 Because provider requests and SAFE tool calls run through the managed worker, the default pycaw backend balances COM initialization and uninitialization around each audio operation. This keeps COM state local to the thread performing the Core Audio call while leaving the UI event loop responsive.
 
+## Controlled Phase 7A Filesystem Boundary
+
+Phase 7A provides four explicit SAFE, read-only tools: `list_directory`, `search_files`, `get_file_info`, and `read_text_file`. They use the existing registry, schema validation, `ToolExecutionService`, and structured `ToolResult` path; the UI and provider layers never access the filesystem directly.
+
+A centralized `FileSystemPolicy` maps the controlled location identifiers `desktop`, `documents`, `downloads`, `pictures`, `music`, and `videos` to directories under the current user's home directory. Tools accept only a location identifier plus an optional relative path. They do not accept arbitrary absolute, drive-qualified, UNC, network, or user-supplied root paths.
+
+The policy resolves candidates with `pathlib`, rejects NUL characters and parent traversal, verifies resolved containment with `Path.relative_to()`, and resolves symlinks before allowing a target. Bounded recursive search does not follow directory symlinks and is limited by depth, scanned entries, and result count. Text reads are limited to an allow-list of text extensions, a maximum file size, and a maximum returned character count. Successful results expose approved location identifiers and relative paths only; policy, filesystem, encoding, and size failures become structured safe results without raw absolute paths or tracebacks.
+
 ## Proposed Application Layout
 
 ```text

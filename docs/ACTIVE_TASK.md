@@ -1,31 +1,29 @@
 ## Task
 
-Implement Phase 6B bounded global media playback and Windows system-volume controls through AURA's existing tool architecture — complete. Do not start Phase 7 automatically.
+Implement Phase 7A Safe File and Folder Discovery through AURA's existing provider-neutral tool architecture — complete. Do not start Phase 7B automatically.
 
 ## Implemented Tools
 
-The default registry now includes nine explicit `ToolPermission.SAFE` tools: `media_play_pause`, `media_next`, `media_previous`, `get_volume`, `set_volume`, `volume_up`, `volume_down`, `mute`, and `unmute`.
+The default registry now includes four explicit `ToolPermission.SAFE` read-only tools: `list_directory`, `search_files`, `get_file_info`, and `read_text_file`.
 
-Media tools accept no arguments and use fixed Windows virtual keys through `ctypes` and User32 `SendInput`. Volume tools use the default Windows output endpoint through the pinned `pycaw==20240210` dependency. `get_volume` returns normalized 0–100 data; `set_volume` accepts only whole percentages from 0 through 100; relative adjustments default to 10 percentage points and are bounded to 1–50; results clamp at 0 and 100; mute and unmute explicitly set their respective states.
+Each tool accepts a controlled location identifier rather than an arbitrary absolute path. Approved identifiers are `desktop`, `documents`, `downloads`, `pictures`, `music`, and `videos`; AURA maps them from the current user's home directory. Optional paths are relative to the selected approved root only.
 
-All platform details remain inside `app/tools/media.py` and `app/tools/audio.py`. The tools return structured failures for invalid arguments, unsupported platforms, unavailable audio interfaces, media-command failures, and audio-control failures. No arbitrary key injection, shell command, subprocess, application-specific player integration, or generic audio-control tool was added.
+The centralized `FileSystemPolicy` resolves paths with `pathlib`, rejects absolute/drive-qualified and UNC paths, rejects parent traversal and NUL characters, verifies resolved containment with `relative_to()`, and prevents directory-walk symlink escapes by resolving entries and not following directory symlinks. Missing or unavailable approved roots are structured failures rather than startup errors.
 
-## Important Fixes During Validation
+## Tool Behavior and Limits
 
-Real Windows validation exposed two defects that were fixed before completion. The installed pycaw release returned a COM pointer instead of the newer wrapper shape, so AURA now adapts both forms through a normalized endpoint-volume adapter. The initial `ctypes` `INPUT` union was undersized because its native mouse and hardware members were omitted; User32 consequently returned zero with Windows error 87. The complete native union is now represented and the fixed media-key path passes real Windows validation.
+`list_directory` lists only immediate entries in deterministic order. `search_files` matches names within one approved root and is bounded to a 200-character query, 100 returned results, 5,000 scanned entries, and depth four. `get_file_info` reports minimal file or directory metadata without recursive folder sizing. `read_text_file` permits only `.txt`, `.md`, `.py`, `.json`, `.csv`, and `.log`, requires strict UTF-8, checks a 1 MiB file-size limit, and returns at most 50,000 characters with explicit truncation status.
 
-Because SAFE tools execute in the managed conversation worker, the default pycaw backend explicitly balances COM initialization and uninitialization around each worker-thread audio operation. UI, provider, core conversation, tool-confirmation, and background-worker architecture remains unchanged.
+All tools route through `ToolRegistry`, schema validation, centralized path validation, and `ToolExecutionService`. No UI filesystem access, write operation, destructive operation, shell command, subprocess, arbitrary path tool, confirmation bypass, or Phase 7B capability was added.
 
 ## Validation
 
-The complete automated suite passes with **113 tests**. New mocked coverage verifies every Phase 6B action, fixed virtual-key values, native `INPUT` sizing, no-argument enforcement, validation of 0/50/100 and invalid volume values, bounded relative adjustments, clamping, explicit mute/unmute, adapter normalization, platform failures, API failures, registry membership, and registry-derived Gemini declarations. Existing Phase 4 and Phase 6A behavior and all conversation/worker/dark-theme regressions remain passing.
+The complete suite passes with **134 tests**, with one platform-conditional symlink test skipped because the Windows test environment does not permit symlink creation. New tests cover valid/nested roots, traversal, Windows absolute and UNC paths, sibling-prefix attacks, symlink escapes where available, unavailable locations, deterministic listings, bounded searches, query validation, minimal metadata, supported and unsupported text formats, binary and invalid-encoding handling, oversized files, content truncation, wrong target types, extra arguments, registry membership, provider declaration derivation, and existing tools and regressions.
 
-`pip check` reports no broken requirements, and the package wheel builds successfully. Windows `python.exe main.py` launches with `AURA | Personal Desktop Assistant - AURA` and remains alive until clean smoke-test shutdown.
+The package wheel builds and contains `app/tools/file_system.py`. `pip check` reports no broken requirements. Windows UI smoke launch succeeds with title `AURA | Personal Desktop Assistant - AURA`. A static scan found no shell execution, PowerShell, `cmd.exe`, subprocess, or unrelated arbitrary command execution in the filesystem module. Temporary validation files were removed.
 
-Real Windows smoke tests succeeded for `get_volume`, `set_volume`, default and explicit `volume_up`, explicit `volume_down`, `mute`, `unmute`, `media_play_pause`, `media_next`, and `media_previous`. The audio state was restored to the original observed volume of 100 and unmuted state. Automated tests never alter the real system or send real media commands.
-
-No API key or `.env` value was exposed, modified, regenerated, printed, or committed. Temporary diagnostics and validation scripts were removed.
+Live Gemini requests remain blocked by the previously confirmed external HTTP 429 quota condition, so provider tool declarations and valid tool-call normalization were verified with mocked SDK responses. No API key or `.env` value was exposed, modified, regenerated, printed, or committed.
 
 ## Next Action
 
-Do not begin Phase 7 automatically. The recommended next task is Phase 7: File and Folder Management.
+Phase 7A is complete, but Phase 7 as a whole is not complete. The recommended next task is **Phase 7B: Controlled File Creation and Organization**. Do not begin Phase 7B automatically.

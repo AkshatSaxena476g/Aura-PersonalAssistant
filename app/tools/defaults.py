@@ -14,6 +14,12 @@ from .audio import (
     VolumeDownTool,
     VolumeUpTool,
 )
+from .file_system import (
+    GetFileInfoTool,
+    ListDirectoryTool,
+    ReadTextFileTool,
+    SearchFilesTool,
+)
 from .registry import ToolRegistry
 
 
@@ -37,5 +43,9 @@ def create_default_tool_registry(*, application_name: str = "AURA") -> ToolRegis
             VolumeDownTool(),
             MuteTool(),
             UnmuteTool(),
+            ListDirectoryTool(),
+            SearchFilesTool(),
+            GetFileInfoTool(),
+            ReadTextFileTool(),
         )
     )

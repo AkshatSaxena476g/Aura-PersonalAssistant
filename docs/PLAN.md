@@ -24,8 +24,11 @@ Restricted `search_web`, `open_youtube`, and `search_youtube` tools using fixed 
 ## Phase 6B: Basic Media Controls — complete
 Bounded global media playback and Windows system-volume controls through explicit SAFE tools, with mocked platform tests, lazy platform integration, and no arbitrary audio commands.
 
-## Phase 7: File and Folder Management
-Search, create, move, copy, rename, and safely delete files and folders through validated and confirmation-aware tools. This phase has not started.
+## Phase 7A: Safe File and Folder Discovery — complete
+Read-only, bounded discovery through `list_directory`, `search_files`, `get_file_info`, and `read_text_file`. All targets use approved user-location identifiers and centralized resolved-path validation; write and destructive operations are not included.
+
+## Phase 7B: Controlled File Creation and Organization
+Create and organize files and folders through validated, bounded, and confirmation-aware tools. This phase has not started.
 
 
 ## Phase 8: Voice Interaction

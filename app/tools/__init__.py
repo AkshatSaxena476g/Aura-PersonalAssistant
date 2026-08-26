@@ -20,6 +20,13 @@ from .audio import (
     VolumeDownTool,
     VolumeUpTool,
 )
+from .file_system import (
+    FileSystemPolicy,
+    GetFileInfoTool,
+    ListDirectoryTool,
+    ReadTextFileTool,
+    SearchFilesTool,
+)
 
 __all__ = [
     "Tool",
@@ -41,5 +48,10 @@ __all__ = [
     "VolumeDownTool",
     "MuteTool",
     "UnmuteTool",
+    "FileSystemPolicy",
+    "ListDirectoryTool",
+    "SearchFilesTool",
+    "GetFileInfoTool",
+    "ReadTextFileTool",
     "create_default_tool_registry",
 ]

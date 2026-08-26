@@ -182,14 +182,18 @@ def test_default_registry_contains_safe_demos_and_controlled_launcher() -> None:
 
     assert registry.names == (
         "get_application_status",
+        "get_file_info",
         "get_local_datetime",
         "get_volume",
         "launch_application",
+        "list_directory",
         "media_next",
         "media_play_pause",
         "media_previous",
         "mute",
         "open_youtube",
+        "read_text_file",
+        "search_files",
         "search_web",
         "search_youtube",
         "set_volume",
@@ -219,6 +223,10 @@ def test_default_registry_contains_safe_demos_and_controlled_launcher() -> None:
         "unmute",
         "volume_down",
         "volume_up",
+        "get_file_info",
+        "list_directory",
+        "read_text_file",
+        "search_files",
     ):
         assert definitions[name].permission is ToolPermission.SAFE
 

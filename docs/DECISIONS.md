@@ -83,3 +83,9 @@
 **Decision:** Implement `media_play_pause`, `media_next`, and `media_previous` with fixed Windows media virtual keys sent through a correctly sized `ctypes` User32 `SendInput` structure. Implement volume and mute controls through a pinned pycaw adapter over the default Windows Core Audio endpoint. Keep platform imports and native calls isolated in `app/tools/media.py` and `app/tools/audio.py`.
 
 **Reason:** The standard library is sufficient for fixed media-key injection, while system endpoint volume and mute require a maintained Core Audio wrapper. The explicit adapters avoid unrestricted keyboard, shell, subprocess, or player-specific commands. The pycaw backend is lazy and balances COM initialization per operation because SAFE tools execute in the managed conversation worker thread. Unsupported platforms, unavailable audio interfaces, partial native input, and API failures are converted into structured safe tool results.
+
+## D015: Centralize Phase 7A Filesystem Path Policy
+
+**Decision:** Implement Phase 7A filesystem discovery through a shared `FileSystemPolicy` that maps approved location identifiers to the current user's standard directories and resolves only relative paths inside those roots. Use the same policy for `list_directory`, `search_files`, `get_file_info`, and `read_text_file`.
+
+**Reason:** AURA must provide useful local discovery without giving Gemini or the user an unrestricted filesystem path capability. Resolved-path containment, rejection of traversal/absolute/network paths, symlink escape protection, bounded search, allow-listed text extensions, and read-size/content limits are security invariants that must not be duplicated across tools. All four tools remain read-only SAFE operations routed through the existing registry and execution service; Phase 7B write and destructive operations are intentionally deferred.
