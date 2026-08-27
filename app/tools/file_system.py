@@ -1,4 +1,4 @@
-"""Read-only, bounded filesystem discovery tools for AURA Phase 7A."""
+"""Bounded filesystem tools for AURA Phase 7A + 7B."""
 
 from __future__ import annotations
 
@@ -6,9 +6,15 @@ import logging
 from collections.abc import Mapping
 from dataclasses import dataclass, field
 from pathlib import Path, PureWindowsPath
-from typing import Any, Callable, Iterator
+from typing import Any, Iterator
 
-from .contracts import Tool, ToolDefinition, ToolPermission, ToolResult, ToolValidationError
+from .contracts import (
+    Tool,
+    ToolDefinition,
+    ToolPermission,
+    ToolResult,
+    ToolValidationError,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -36,6 +42,16 @@ MAX_SEARCH_DEPTH = 4
 MAX_TEXT_FILE_BYTES = 1_048_576
 MAX_RETURNED_TEXT_CHARACTERS = 50_000
 SUPPORTED_TEXT_EXTENSIONS = frozenset({".txt", ".md", ".py", ".json", ".csv", ".log"})
+
+MAX_WRITE_CONTENT_CHARACTERS = 50_000
+MAX_DIRECTORY_NAME_LENGTH = 255
+MAX_FILE_NAME_LENGTH = 255
+_RESERVED_WINDOWS_NAMES = frozenset(
+    ["CON", "PRN", "AUX", "NUL"]
+    + [f"COM{i}" for i in range(1, 10)]
+    + [f"LPT{i}" for i in range(1, 10)]
+)
+_INVALID_FILENAME_CHARS = frozenset('<>:"/\\|?*')
 
 
 class FileSystemPolicyError(ValueError):
@@ -69,13 +85,16 @@ class FileSystemPolicy:
         invalid_locations = set(normalized_roots) - set(LOCATION_NAMES)
         if invalid_locations:
             raise ValueError("Filesystem policy contains an unknown location")
-        if any(value <= 0 for value in (
-            self.max_search_results,
-            self.max_search_entries_scanned,
-            self.max_search_depth,
-            self.max_text_file_bytes,
-            self.max_returned_text_characters,
-        )):
+        if any(
+            value <= 0
+            for value in (
+                self.max_search_results,
+                self.max_search_entries_scanned,
+                self.max_search_depth,
+                self.max_text_file_bytes,
+                self.max_returned_text_characters,
+            )
+        ):
             raise ValueError("Filesystem policy limits must be positive")
         object.__setattr__(self, "roots", normalized_roots)
 
@@ -183,6 +202,39 @@ class FileSystemPolicy:
         return ".." in Path(value).parts or ".." in PureWindowsPath(value).parts
 
 
+def _validate_filename_part(name: str) -> str | None:
+    if not name or name in (".", ".."):
+        return "Filename is invalid."
+    if len(name) > MAX_FILE_NAME_LENGTH:
+        return "Filename exceeds safe length."
+    if any(char in name for char in _INVALID_FILENAME_CHARS):
+        return "Filename contains invalid characters."
+    if any(ord(c) < 32 for c in name):
+        return "Filename contains invalid characters."
+    if name[-1] in (" ", "."):
+        return "Filename must not end with space or period."
+    stem = name.split(".")[0].upper()
+    if stem in _RESERVED_WINDOWS_NAMES:
+        return "Filename is reserved on Windows."
+    return None
+
+
+def _validate_write_path(path: str) -> str | None:
+    for part in PureWindowsPath(path).parts:
+        if part in ("/", "\\", ".", ".."):
+            continue
+        error = _validate_filename_part(part)
+        if error is not None:
+            return error
+    for part in Path(path).parts:
+        if part in ("/", "\\", ".", ".."):
+            continue
+        error = _validate_filename_part(part)
+        if error is not None:
+            return error
+    return None
+
+
 class _FileSystemTool(Tool):
     """Shared validation, policy access, and safe failure mapping."""
 
@@ -217,8 +269,7 @@ class _FileSystemTool(Tool):
         normalized = location.strip().lower()
         if normalized not in LOCATION_NAMES:
             raise ToolValidationError(
-                "Argument 'location' must be one of: "
-                + ", ".join(LOCATION_NAMES)
+                "Argument 'location' must be one of: " + ", ".join(LOCATION_NAMES)
             )
         arguments["location"] = normalized
         return arguments
@@ -270,7 +321,9 @@ class _FileSystemTool(Tool):
     ) -> dict[str, Any] | None:
         try:
             relative_path = entry.resolve(strict=False).relative_to(root).as_posix()
-            resolved = self._policy.resolve_path(location, relative_path, allow_root=False)
+            resolved = self._policy.resolve_path(
+                location, relative_path, allow_root=False
+            )
             if resolved.is_dir():
                 entry_type = "directory"
             elif resolved.is_file():
@@ -310,7 +363,9 @@ class _FileSystemTool(Tool):
                     return
                 scanned += 1
                 try:
-                    relative_path = child.resolve(strict=False).relative_to(root).as_posix()
+                    relative_path = (
+                        child.resolve(strict=False).relative_to(root).as_posix()
+                    )
                     resolved = self._policy.resolve_path(
                         location,
                         relative_path,
@@ -379,7 +434,9 @@ class ListDirectoryTool(_FileSystemTool):
         root = self._policy.root_for(arguments["location"])
         try:
             entries = []
-            for entry in sorted(target.iterdir(), key=lambda path: path.name.casefold()):
+            for entry in sorted(
+                target.iterdir(), key=lambda path: path.name.casefold()
+            ):
                 safe_entry = self._safe_entry(arguments["location"], root, entry)
                 if safe_entry is not None:
                     entries.append(safe_entry)
@@ -473,7 +530,9 @@ class SearchFilesTool(_FileSystemTool):
             )
 
         results.sort(key=lambda item: item["relative_path"].casefold())
-        message = f"Found {len(results)} matching item{'s' if len(results) != 1 else ''}."
+        message = (
+            f"Found {len(results)} matching item{'s' if len(results) != 1 else ''}."
+        )
         if truncated:
             message += " The result list was bounded."
         return ToolResult.ok(
@@ -655,6 +714,269 @@ class ReadTextFileTool(_FileSystemTool):
         )
 
 
+class CreateDirectoryTool(_FileSystemTool):
+    """Create a single bounded directory inside an approved location."""
+
+    @property
+    def permission(self) -> ToolPermission:
+        return ToolPermission.CONFIRMATION_REQUIRED
+
+    @property
+    def definition(self) -> ToolDefinition:
+        return ToolDefinition(
+            name="create_directory",
+            description=(
+                "Create a single new directory inside an approved user location. "
+                "The parent directory must already exist; intermediate directories are not created automatically. "
+                "Use only an approved location identifier and a relative path."
+            ),
+            permission=ToolPermission.CONFIRMATION_REQUIRED,
+            input_schema={
+                "type": "object",
+                "properties": {
+                    "location": self._location_schema(),
+                    "path": self._path_schema(required=True),
+                },
+                "required": ["location", "path"],
+                "additionalProperties": False,
+            },
+        )
+
+    def validate(self, arguments: Mapping[str, Any]) -> dict[str, Any]:
+        validated = super().validate(arguments)
+        validated = self._normalize_required_path(self._normalize_location(validated))
+        error = _validate_write_path(validated["path"])
+        if error is not None:
+            raise ToolValidationError(error)
+        return validated
+
+    def execute(self, arguments: Mapping[str, Any]) -> ToolResult:
+        target, failure = self._resolve(
+            arguments["location"],
+            arguments["path"],
+            allow_root=False,
+        )
+        if failure is not None:
+            return failure
+        assert target is not None
+        if target.exists():
+            return self._safe_failure(
+                "The requested directory already exists.",
+                "target_exists",
+            )
+        error = _validate_write_path(arguments["path"])
+        if error is not None:
+            return self._safe_failure(error, "invalid_path")
+
+        root = self._policy.root_for(arguments["location"])
+        parent = target.parent
+        try:
+            parent.relative_to(root)
+        except ValueError:
+            return self._safe_failure(
+                "The requested path is outside AURA's approved locations.",
+                "path_not_allowed",
+            )
+        if not parent.exists():
+            return self._safe_failure(
+                "The parent directory does not exist.",
+                "parent_not_found",
+            )
+        if not parent.is_dir():
+            return self._safe_failure(
+                "The parent target is not a directory.",
+                "parent_not_found",
+            )
+        if parent.is_symlink():
+            try:
+                resolved_parent = parent.resolve(strict=True)
+                resolved_parent.relative_to(root)
+            except (OSError, ValueError, RuntimeError):
+                return self._safe_failure(
+                    "The requested path is outside AURA's approved locations.",
+                    "path_not_allowed",
+                )
+
+        try:
+            target.mkdir(parents=False, exist_ok=False)
+        except FileExistsError:
+            return self._safe_failure(
+                "The requested directory already exists.",
+                "target_exists",
+            )
+        except OSError:
+            return self._safe_failure(
+                "The directory could not be created.",
+                "filesystem_error",
+            )
+
+        relative_path = target.relative_to(root).as_posix()
+        return ToolResult.ok(
+            "Directory created successfully.",
+            data={
+                "location": arguments["location"],
+                "relative_path": relative_path,
+                "name": target.name,
+            },
+        )
+
+
+class WriteTextFileTool(_FileSystemTool):
+    """Create or overwrite a bounded UTF-8 text file inside an approved location."""
+
+    @property
+    def permission(self) -> ToolPermission:
+        return ToolPermission.CONFIRMATION_REQUIRED
+
+    @property
+    def definition(self) -> ToolDefinition:
+        return ToolDefinition(
+            name="write_text_file",
+            description=(
+                "Create or overwrite a bounded UTF-8 text file inside an approved user location. "
+                "Supported extensions are .txt, .md, .py, .json, .csv, and .log. "
+                "Content is limited to 50,000 characters and 1 MiB when encoded as UTF-8. "
+                "The parent directory must already exist."
+            ),
+            permission=ToolPermission.CONFIRMATION_REQUIRED,
+            input_schema={
+                "type": "object",
+                "properties": {
+                    "location": self._location_schema(),
+                    "path": self._path_schema(required=True),
+                    "content": {
+                        "type": "string",
+                        "description": "UTF-8 text content to write; at most 50,000 characters.",
+                    },
+                },
+                "required": ["location", "path", "content"],
+                "additionalProperties": False,
+            },
+        )
+
+    def validate(self, arguments: Mapping[str, Any]) -> dict[str, Any]:
+        validated = super().validate(arguments)
+        validated = self._normalize_required_path(self._normalize_location(validated))
+        content = validated.get("content")
+        if not isinstance(content, str):
+            raise ToolValidationError("Argument 'content' must be a string")
+        if len(content) > MAX_WRITE_CONTENT_CHARACTERS:
+            raise ToolValidationError(
+                f"Argument 'content' must be at most {MAX_WRITE_CONTENT_CHARACTERS} characters"
+            )
+        error = _validate_write_path(validated["path"])
+        if error is not None:
+            raise ToolValidationError(error)
+        path_obj = Path(validated["path"])
+        if path_obj.suffix.lower() not in SUPPORTED_TEXT_EXTENSIONS:
+            raise ToolValidationError(
+                "File extension is not supported for safe text writing. Use .txt, .md, .py, .json, .csv, or .log"
+            )
+        return validated
+
+    def execute(self, arguments: Mapping[str, Any]) -> ToolResult:
+        target, failure = self._resolve(
+            arguments["location"],
+            arguments["path"],
+            allow_root=False,
+        )
+        if failure is not None:
+            return failure
+        assert target is not None
+
+        error = _validate_write_path(arguments["path"])
+        if error is not None:
+            return self._safe_failure(error, "invalid_path")
+
+        if target.suffix.lower() not in SUPPORTED_TEXT_EXTENSIONS:
+            return self._safe_failure(
+                "This file extension is not supported for safe text writing.",
+                "unsupported_extension",
+            )
+
+        content: str = arguments["content"]
+        if len(content) > MAX_WRITE_CONTENT_CHARACTERS:
+            return self._safe_failure(
+                "The text content exceeds AURA's safe character limit.",
+                "content_too_large",
+            )
+        encoded = content.encode("utf-8")
+        if len(encoded) > self._policy.max_text_file_bytes:
+            return self._safe_failure(
+                "The text content exceeds AURA's safe size limit.",
+                "content_too_large",
+            )
+
+        root = self._policy.root_for(arguments["location"])
+        parent = target.parent
+        try:
+            parent.relative_to(root)
+        except ValueError:
+            return self._safe_failure(
+                "The requested path is outside AURA's approved locations.",
+                "path_not_allowed",
+            )
+        if not parent.exists():
+            return self._safe_failure(
+                "The parent directory does not exist.",
+                "parent_not_found",
+            )
+        if not parent.is_dir():
+            return self._safe_failure(
+                "The parent target is not a directory.",
+                "parent_not_found",
+            )
+        if parent.is_symlink():
+            try:
+                resolved_parent = parent.resolve(strict=True)
+                resolved_parent.relative_to(root)
+            except (OSError, ValueError, RuntimeError):
+                return self._safe_failure(
+                    "The requested path is outside AURA's approved locations.",
+                    "path_not_allowed",
+                )
+
+        if target.exists() and target.is_dir():
+            return self._safe_failure(
+                "The requested target is a directory.",
+                "target_is_directory",
+            )
+        if target.is_symlink():
+            try:
+                resolved_target = target.resolve(strict=True)
+                resolved_target.relative_to(root)
+            except (OSError, ValueError, RuntimeError):
+                return self._safe_failure(
+                    "The requested path is outside AURA's approved locations.",
+                    "path_not_allowed",
+                )
+
+        try:
+            with target.open("w", encoding="utf-8", newline="") as handle:
+                handle.write(content)
+        except OSError:
+            return self._safe_failure(
+                "The text file could not be written.",
+                "filesystem_error",
+            )
+
+        relative_path = target.relative_to(root).as_posix()
+        try:
+            size_bytes = target.stat().st_size
+        except OSError:
+            size_bytes = len(encoded)
+
+        return ToolResult.ok(
+            "Text file written successfully.",
+            data={
+                "location": arguments["location"],
+                "relative_path": relative_path,
+                "name": target.name,
+                "size_bytes": size_bytes,
+            },
+        )
+
+
 __all__ = [
     "FileSystemPolicy",
     "GetFileInfoTool",
@@ -666,7 +988,10 @@ __all__ = [
     "MAX_SEARCH_QUERY_LENGTH",
     "MAX_SEARCH_RESULTS",
     "MAX_TEXT_FILE_BYTES",
+    "MAX_WRITE_CONTENT_CHARACTERS",
     "ReadTextFileTool",
     "SearchFilesTool",
     "SUPPORTED_TEXT_EXTENSIONS",
+    "CreateDirectoryTool",
+    "WriteTextFileTool",
 ]

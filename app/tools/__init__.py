@@ -21,11 +21,13 @@ from .audio import (
     VolumeUpTool,
 )
 from .file_system import (
+    CreateDirectoryTool,
     FileSystemPolicy,
     GetFileInfoTool,
     ListDirectoryTool,
     ReadTextFileTool,
     SearchFilesTool,
+    WriteTextFileTool,
 )
 
 __all__ = [
@@ -53,5 +55,7 @@ __all__ = [
     "SearchFilesTool",
     "GetFileInfoTool",
     "ReadTextFileTool",
+    "CreateDirectoryTool",
+    "WriteTextFileTool",
     "create_default_tool_registry",
 ]

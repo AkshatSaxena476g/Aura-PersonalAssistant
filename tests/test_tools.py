@@ -19,7 +19,9 @@ from app.tools.demo import GetLocalDateTimeTool
 
 
 class EchoTool(Tool):
-    def __init__(self, name: str = "echo", permission: ToolPermission = ToolPermission.SAFE) -> None:
+    def __init__(
+        self, name: str = "echo", permission: ToolPermission = ToolPermission.SAFE
+    ) -> None:
         self.calls = 0
         self._definition = ToolDefinition(
             name=name,
@@ -181,6 +183,7 @@ def test_default_registry_contains_safe_demos_and_controlled_launcher() -> None:
     registry = create_default_tool_registry(application_name="AURA")
 
     assert registry.names == (
+        "create_directory",
         "get_application_status",
         "get_file_info",
         "get_local_datetime",
@@ -200,19 +203,30 @@ def test_default_registry_contains_safe_demos_and_controlled_launcher() -> None:
         "unmute",
         "volume_down",
         "volume_up",
+        "write_text_file",
     )
-    definitions = {
-        definition.name: definition for definition in registry.definitions()
-    }
+    definitions = {definition.name: definition for definition in registry.definitions()}
     assert definitions["get_application_status"].permission is ToolPermission.SAFE
     assert definitions["get_local_datetime"].permission is ToolPermission.SAFE
     assert (
         definitions["launch_application"].permission
         is ToolPermission.CONFIRMATION_REQUIRED
     )
-    assert definitions["open_youtube"].permission is ToolPermission.CONFIRMATION_REQUIRED
+    assert (
+        definitions["open_youtube"].permission is ToolPermission.CONFIRMATION_REQUIRED
+    )
     assert definitions["search_web"].permission is ToolPermission.CONFIRMATION_REQUIRED
-    assert definitions["search_youtube"].permission is ToolPermission.CONFIRMATION_REQUIRED
+    assert (
+        definitions["search_youtube"].permission is ToolPermission.CONFIRMATION_REQUIRED
+    )
+    assert (
+        definitions["create_directory"].permission
+        is ToolPermission.CONFIRMATION_REQUIRED
+    )
+    assert (
+        definitions["write_text_file"].permission
+        is ToolPermission.CONFIRMATION_REQUIRED
+    )
     for name in (
         "get_volume",
         "media_next",

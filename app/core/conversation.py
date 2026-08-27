@@ -264,4 +264,12 @@ class ConversationService:
             }
             display_name = labels.get(str(application), "this application")
             return f"I can open {display_name}. Do you want me to proceed?"
+        if prepared.name == "create_directory":
+            location = prepared.arguments.get("location", "location")
+            path = prepared.arguments.get("path", "directory")
+            return f"I can create the directory '{path}' in {location}. Do you want me to proceed?"
+        if prepared.name == "write_text_file":
+            location = prepared.arguments.get("location", "location")
+            path = prepared.arguments.get("path", "file")
+            return f"I can write to '{path}' in {location}. Do you want me to proceed?"
         return f"AURA is ready to run {prepared.name}. Do you want me to proceed?"

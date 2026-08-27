@@ -96,6 +96,14 @@ A centralized `FileSystemPolicy` maps the controlled location identifiers `deskt
 
 The policy resolves candidates with `pathlib`, rejects NUL characters and parent traversal, verifies resolved containment with `Path.relative_to()`, and resolves symlinks before allowing a target. Bounded recursive search does not follow directory symlinks and is limited by depth, scanned entries, and result count. Text reads are limited to an allow-list of text extensions, a maximum file size, and a maximum returned character count. Successful results expose approved location identifiers and relative paths only; policy, filesystem, encoding, and size failures become structured safe results without raw absolute paths or tracebacks.
 
+## Controlled Phase 7B Filesystem Write Boundary
+
+Phase 7B adds two explicit `CONFIRMATION_REQUIRED` tools — `create_directory` and `write_text_file` — layered on the same `FileSystemPolicy` and registry-derived declaration path. They reuse `location` + `relative_path` resolution, `relative_to()` containment, and symlink-escape protection, and additionally validate each filename part against invalid Windows characters, trailing space/period, and reserved names (`CON`, `PRN`, `AUX`, `NUL`, `COM1-9`, `LPT1-9`).
+
+`create_directory` creates exactly one new directory; its immediate parent must already exist and be a directory, preventing implicit recursive creation. `write_text_file` creates or overwrites a bounded UTF-8 text file limited to the same six extensions (`.txt`, `.md`, `.py`, `.json`, `.csv`, `.log`), at most 50,000 characters and 1 MiB UTF-8, with strict encoding and parent-must-exist enforcement. The parent directory is checked for symlink escape before any write, and directory targets are rejected for file writes.
+
+Both tools are confirmation-aware: Gemini's `ToolCallRequest` becomes a `PendingToolRequest` displayed via Allow/Cancel, and execution occurs only through `ToolExecutionService.execute_prepared(confirmed=True)` with stale/duplicate request protection handled by `ConversationService`. Successful results return approved `location` + `relative_path` only; move, copy, delete, recursive delete, binary writes, shell, and subprocess remain deliberately outside the boundary.
+
 ## Proposed Application Layout
 
 ```text

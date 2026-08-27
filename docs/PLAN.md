@@ -27,8 +27,8 @@ Bounded global media playback and Windows system-volume controls through explici
 ## Phase 7A: Safe File and Folder Discovery — complete
 Read-only, bounded discovery through `list_directory`, `search_files`, `get_file_info`, and `read_text_file`. All targets use approved user-location identifiers and centralized resolved-path validation; write and destructive operations are not included.
 
-## Phase 7B: Controlled File Creation and Organization
-Create and organize files and folders through validated, bounded, and confirmation-aware tools. This phase has not started.
+## Phase 7B: Controlled File Creation and Organization — complete
+Bounded, confirmation-aware creation through `create_directory` and `write_text_file` inside the same six approved locations and centralized `FileSystemPolicy`. Both tools validate filenames, enforce allow-listed text extensions, and apply size/content limits; destructive operations (delete, move/copy, binary writes) remain out of scope.
 
 
 ## Phase 8: Voice Interaction

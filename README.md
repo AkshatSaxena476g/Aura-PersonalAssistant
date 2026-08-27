@@ -18,11 +18,11 @@ Before contributing to the project, read the documents in this order:
 6. `docs/ARCHITECTURE.md`
 7. `docs/DECISIONS.md`
 
-The current implementation target is recorded in `docs/ACTIVE_TASK.md`. Phase 6A controlled Web and YouTube capabilities and Phase 6B Basic Media Controls are complete; Phase 7 File and Folder Management has not started.
+The current implementation target is recorded in `docs/ACTIVE_TASK.md`. Phase 6A controlled Web and YouTube capabilities, Phase 6B Basic Media Controls, Phase 7A Safe File and Folder Discovery, and Phase 7B Controlled File Creation and Organization are complete; Phase 7 File Management as a whole is complete.
 
 ## Initial technology direction
 
-AURA is a Windows-first Python desktop application. The technology direction includes PySide6 for the desktop UI, the official `google-genai` SDK behind a swappable AI provider layer, pycaw for Windows Core Audio, SQLite for persistence, replaceable speech and wake-word providers, Playwright for supported web interaction, pytest for testing, Python logging, and PyInstaller for later packaging. The current Phase 6B implementation supports text conversation, controlled Web and YouTube discovery, bounded global media playback, and Windows system-volume controls through Gemini tool calling; Phase 7 file management has not started.
+AURA is a Windows-first Python desktop application. The technology direction includes PySide6 for the desktop UI, the official `google-genai` SDK behind a swappable AI provider layer, pycaw for Windows Core Audio, SQLite for persistence, replaceable speech and wake-word providers, Playwright for supported web interaction, pytest for testing, Python logging, and PyInstaller for later packaging. The current Phase 7B implementation supports text conversation, controlled Web and YouTube discovery, bounded global media playback, Windows system-volume controls, and bounded file discovery and creation through Gemini tool calling; move/copy/delete and destructive file operations remain unsupported.
 
 ## Repository layout
 
@@ -44,7 +44,7 @@ AURA/
 └── .env.example
 ```
 
-The Phase 6B foundation supports normal text conversation, provider-neutral Gemini tool calling, controlled Web and YouTube discovery, bounded global media playback, and Windows system-volume controls. Gemini receives function declarations derived from the active `ToolRegistry`; every call is validated and routed through `ToolExecutionService`. Confirmation-required actions display Allow/Cancel controls and cannot execute before approval. Conversation requests run through a managed Qt worker so the desktop remains responsive while waiting for the provider. The UI uses a restrained dark theme defined centrally in `app/ui/theme.py`. Browser actions remain limited to internally generated destinations, while media and audio actions use only explicit fixed controls; arbitrary URLs, browser automation, shell execution, arbitrary keyboard injection, and executable browser arguments remain unsupported. File management, voice, text-to-speech, wake-word behavior, persistent memory, and autonomous actions remain unavailable.
+The Phase 7B foundation supports normal text conversation, provider-neutral Gemini tool calling, controlled Web and YouTube discovery, bounded global media playback, Windows system-volume controls, and bounded file discovery and creation. Gemini receives function declarations derived from the active `ToolRegistry`; every call is validated and routed through `ToolExecutionService`. Confirmation-required actions (app launch, web, file creation) display Allow/Cancel controls and cannot execute before approval. Conversation requests run through a managed Qt worker so the desktop remains responsive while waiting for the provider. The UI uses a restrained dark theme defined centrally in `app/ui/theme.py`. Browser actions remain limited to internally generated destinations, media/audio use explicit fixed controls, and filesystem writes are limited to single-directory creation and bounded text writes inside six approved user folders; arbitrary URLs, browser automation, shell execution, arbitrary keyboard injection, executable browser arguments, move/copy/delete, and binary writes remain unsupported. Voice, text-to-speech, wake-word behavior, persistent memory, and autonomous actions remain unavailable.
 
 ## Local setup
 
