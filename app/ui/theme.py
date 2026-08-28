@@ -69,6 +69,24 @@ QPushButton#cancelButton {
 QPushButton#cancelButton:hover {
     background: #3a4c5d;
 }
+QPushButton#voiceButton {
+    background: #2d7a5f;
+    border: none;
+    border-radius: 5px;
+    color: #ffffff;
+    font-weight: 600;
+    padding: 9px 18px;
+}
+QPushButton#voiceButton:hover {
+    background: #3a9a7a;
+}
+QPushButton#voiceButton:pressed {
+    background: #1f5a46;
+}
+QPushButton#voiceButton:disabled {
+    background: #3b5267;
+    color: #9aaaba;
+}
 QStatusBar {
     background: #18212b;
     color: #aebdcb;

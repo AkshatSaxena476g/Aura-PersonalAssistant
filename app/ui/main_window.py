@@ -25,6 +25,9 @@ from .theme import AURA_DARK_THEME
 MessageHandler = Callable[[str], ConversationResult]
 AsyncMessageHandler = Callable[[str], bool]
 ConfirmationHandler = Callable[[str], ConversationResult]
+VoiceTranscribeHandler = Callable[[bytes, int], ConversationResult]
+AsyncVoiceHandler = Callable[[bytes, int], bool]
+VoiceCaptureController = Callable[[], object]
 
 
 class MainWindow(QMainWindow):
@@ -39,6 +42,11 @@ class MainWindow(QMainWindow):
         approval_handler: ConfirmationHandler | None = None,
         cancellation_handler: ConfirmationHandler | None = None,
         startup_message: str | None = None,
+        voice_enabled: bool = False,
+        voice_transcribe_handler: VoiceTranscribeHandler | None = None,
+        async_voice_handler: AsyncVoiceHandler | None = None,
+        voice_start_handler: VoiceCaptureController | None = None,
+        voice_stop_handler: VoiceCaptureController | None = None,
         parent: QWidget | None = None,
     ) -> None:
         super().__init__(parent)
@@ -46,8 +54,14 @@ class MainWindow(QMainWindow):
         self.async_message_handler = async_message_handler
         self.approval_handler = approval_handler
         self.cancellation_handler = cancellation_handler
+        self.voice_enabled = voice_enabled
+        self.voice_transcribe_handler = voice_transcribe_handler
+        self.async_voice_handler = async_voice_handler
+        self.voice_start_handler = voice_start_handler
+        self.voice_stop_handler = voice_stop_handler
         self._pending_request_id: str | None = None
         self._request_active = False
+        self._voice_recording = False
         self.setObjectName("auraMainWindow")
         self.setWindowTitle(f"{application_name} | Personal Desktop Assistant")
         self.setMinimumSize(560, 420)
@@ -110,10 +124,17 @@ class MainWindow(QMainWindow):
         self.send_button.setObjectName("sendButton")
         self.send_button.clicked.connect(self._send_message)
 
+        self.voice_button = QPushButton("Hold to Talk", central_widget)
+        self.voice_button.setObjectName("voiceButton")
+        self.voice_button.setVisible(self.voice_enabled)
+        self.voice_button.pressed.connect(self._on_voice_pressed)
+        self.voice_button.released.connect(self._on_voice_released)
+
         input_layout = QHBoxLayout()
         input_layout.setSpacing(8)
         input_layout.addWidget(self.message_input, 1)
         input_layout.addWidget(self.send_button)
+        input_layout.addWidget(self.voice_button)
 
         layout.addWidget(title)
         layout.addWidget(subtitle)
@@ -209,6 +230,98 @@ class MainWindow(QMainWindow):
     def _set_request_controls_busy(self, busy: bool) -> None:
         self.message_input.setEnabled(not busy)
         self.send_button.setEnabled(not busy)
+        if self.voice_enabled:
+            self.voice_button.setEnabled(not busy and self._pending_request_id is None)
+        if busy and self._voice_recording:
+            self._voice_recording = False
+            self.voice_button.setText("Hold to Talk")
+
+    @Slot()
+    def _on_voice_pressed(self) -> None:
+        self._start_voice_capture()
+
+    @Slot()
+    def _on_voice_released(self) -> None:
+        self._stop_voice_capture()
+
+    def _start_voice_capture(self) -> None:
+        if (
+            self._pending_request_id is not None
+            or self._request_active
+            or self._voice_recording
+        ):
+            return
+        if self.voice_start_handler is None:
+            self._append_message("AURA", "Voice input is not configured.")
+            return
+        try:
+            started = self.voice_start_handler()
+        except Exception:
+            started = False
+        if not started:
+            self._append_message(
+                "AURA", "Could not start voice capture. Check microphone."
+            )
+            self.statusBar().showMessage("Microphone unavailable")
+            return
+        self._voice_recording = True
+        self.voice_button.setText("Listening...")
+        self.statusBar().showMessage("Listening... release to send")
+
+    def _stop_voice_capture(self) -> None:
+        if not self._voice_recording:
+            return
+        self._voice_recording = False
+        self.voice_button.setText("Hold to Talk")
+        if self._pending_request_id is not None or self._request_active:
+            if self.voice_stop_handler is not None:
+                try:
+                    self.voice_stop_handler()
+                except Exception:
+                    pass
+            return
+        audio = None
+        if self.voice_stop_handler is not None:
+            try:
+                audio = self.voice_stop_handler()
+            except Exception:
+                audio = None
+        if not isinstance(audio, bytes) or not audio:
+            self._append_message(
+                "AURA", "No audio captured. Hold the talk button and speak."
+            )
+            self.statusBar().showMessage("No audio captured")
+            return
+        self._request_active = True
+        self._set_request_controls_busy(True)
+        self.statusBar().showMessage("Transcribing...")
+        if self.async_voice_handler is not None:
+            try:
+                accepted = self.async_voice_handler(audio, 16000)
+            except Exception:
+                accepted = False
+            if accepted:
+                return
+            self._request_active = False
+            self._set_request_controls_busy(False)
+            self._render_result(
+                ConversationResult(
+                    error_message="AURA is already processing another request."
+                )
+            )
+            return
+        if self.voice_transcribe_handler is not None:
+            try:
+                result = self.voice_transcribe_handler(audio, 16000)
+            except Exception:
+                result = ConversationResult(
+                    error_message="Voice processing failed due to an unexpected error."
+                )
+            self._handle_conversation_result(result)
+            return
+        self._append_message("AURA", "Voice transcription is not configured.")
+        self._request_active = False
+        self._set_request_controls_busy(False)
 
     def _show_confirmation(self, result: ConversationResult) -> None:
         """Show one pending request and lock out competing user actions."""
@@ -234,9 +347,7 @@ class MainWindow(QMainWindow):
             result = (
                 self.approval_handler(request_id)
                 if self.approval_handler is not None
-                else ConversationResult(
-                    error_message="Tool approval is unavailable."
-                )
+                else ConversationResult(error_message="Tool approval is unavailable.")
             )
         except Exception:
             result = ConversationResult(

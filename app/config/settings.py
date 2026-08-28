@@ -78,6 +78,13 @@ class Settings:
     log_level: str = "INFO"
     debug: bool = False
     data_directory: Path = Path("data")
+    voice_enabled: bool = False
+    stt_provider: str = "whisper"
+    tts_provider: str = "sapi"
+    whisper_model: str = "base"
+    tts_voice: str | None = None
+    tts_rate: int = 180
+    voice_auto_speak: bool = False
 
     @classmethod
     def from_environment(
@@ -105,6 +112,26 @@ class Settings:
         debug_value = source.get("AURA_DEBUG", "false")
         data_directory = source.get("AURA_DATA_DIRECTORY", "data").strip() or "data"
         api_key = source.get("GEMINI_API_KEY", "").strip() or None
+        voice_enabled = _parse_bool(
+            source.get("AURA_VOICE_ENABLED", "false"),
+            variable_name="AURA_VOICE_ENABLED",
+        )
+        stt_provider = source.get("AURA_STT_PROVIDER", "whisper").strip() or "whisper"
+        tts_provider = source.get("AURA_TTS_PROVIDER", "sapi").strip() or "sapi"
+        whisper_model = source.get("AURA_WHISPER_MODEL", "base").strip() or "base"
+        tts_voice_raw = source.get("AURA_TTS_VOICE", "").strip()
+        tts_voice = tts_voice_raw or None
+        tts_rate_raw = source.get("AURA_TTS_RATE", "180").strip() or "180"
+        try:
+            tts_rate = int(tts_rate_raw)
+        except ValueError as error:
+            raise ValueError("AURA_TTS_RATE must be an integer") from error
+        if not 80 <= tts_rate <= 400:
+            raise ValueError("AURA_TTS_RATE must be between 80 and 400")
+        voice_auto_speak = _parse_bool(
+            source.get("AURA_VOICE_AUTO_SPEAK", "false"),
+            variable_name="AURA_VOICE_AUTO_SPEAK",
+        )
 
         return cls(
             application_name=source.get("AURA_APPLICATION_NAME", "AURA").strip()
@@ -115,4 +142,11 @@ class Settings:
             log_level=log_level,
             debug=_parse_bool(debug_value, variable_name="AURA_DEBUG"),
             data_directory=Path(data_directory).expanduser(),
+            voice_enabled=voice_enabled,
+            stt_provider=stt_provider,
+            tts_provider=tts_provider,
+            whisper_model=whisper_model,
+            tts_voice=tts_voice,
+            tts_rate=tts_rate,
+            voice_auto_speak=voice_auto_speak,
         )
